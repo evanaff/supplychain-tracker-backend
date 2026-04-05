@@ -2,8 +2,9 @@
 pragma solidity ^0.8.28;
 
 import "./AccessControl.sol";
+import "./SignatureValidator.sol";
 
-contract ProductTracker is AccessControl {
+contract ProductTracker is AccessControl, SignatureValidator {
     enum Grade {
         UNGRADED, A, B, C, REJECTED
     }
@@ -31,12 +32,12 @@ contract ProductTracker is AccessControl {
         uint256 _batchId,
         uint256 _harvestDate,
         uint256 _expiryDate,
-        bytes memory _siganture
+        bytes memory _signature
     ) public onlyProducer {
-        // TODO: Verify producer signature
-        
-        // TODO: Add ProductBatch to mapping and emit BatchCreated event
+        bytes32 messageHash = keccak256(abi.encodePacked(_batchId, _harvestDate, _expiryDate));
+        require(_verifySignature(msg.sender, messageHash, _signature), "Invalid signature");
 
+        // TODO: Add ProductBatch to mapping and emit BatchCreated event
     }
 
     function auditBatch(
@@ -45,7 +46,8 @@ contract ProductTracker is AccessControl {
         string memory _ipfsHash,
         bytes memory _signature
     ) public onlyAuditor {
-        // TODO: Verify auditor signature
+        bytes32 messageHash = keccak256(abi.encodePacked(_batchId, _grade, _ipfsHash));
+        require(_verifySignature(msg.sender, messageHash, _signature), "Invalid signature");
 
         // TODO: Update ProductBatch with audit info and emit BatchAudited event
     }
@@ -55,27 +57,13 @@ contract ProductTracker is AccessControl {
         string memory _newStatus,
         bytes memory _signature
     ) public onlyDistributor {
-        // TODO: Verify distributor signature
+        bytes32 messageHash = keccak256(abi.encodePacked(_batchId,_newStatus));
+        require(_verifySignature(msg.sender, messageHash, _signature), "Invalid signature");
 
         // TODO: Update ProductBatch with new status and emit StatusUpdated event
     }
 
     function getFefoRecommendation() public view returns (uint256[] memory) {
         // TODO: Implement FEFO recommendation logic based on batch expiry dates and grades
-    }
-
-    function verifySignature(
-        bytes32 _messageHash,
-        bytes memory _signature,
-        address _expectedSigner
-    ) public pure returns (bool) {
-        // TODO: Implement signature verification logic
-    }
-
-    function getMessageHash(
-        uint256 _batchId,
-        string memory _data
-    ) public pure returns (bytes32) {
-        // TODO: Implement message hashing logic for signature verification
     }
 }

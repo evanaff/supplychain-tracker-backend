@@ -5,148 +5,134 @@ import "./AccessControl.sol";
 import "./SignatureValidator.sol";
 
 contract ProductTracker is AccessControl, SignatureValidator {
-    enum Grade {
-        UNGRADED,
-        A,
-        B,
-        C,
-        REJECTED
+    enum BizStep {
+        HARVESTING,
+        PACKING,
+        SHIPPING,
+        RECEIVING
     }
 
-    enum Status {
-        REGISTERED,
-        AUDITED,
-        IN_TRANSIT,
-        DELIVERED
+    struct Product {
+        string gtin;
+        string lotNumber;
+        string productName;
+        address owner;
     }
 
-    struct ProductBatch {
-        uint256 batchId;
-        address producer;
-        address auditor;
-        Grade grade;
-        uint256 harvestDate;
-        uint256 expiryDate;
-        string ipfsHash;
-        Status status;
-        bool isVerified;
+    struct TraceEvent {
+        uint256 eventId;
+        string gtin;
+        string lotNumber;
+        BizStep bizStep;
+        string locationGLN;
+        uint256 timestamp;
+        address actor;
+        bytes32 dataHash;
     }
 
-    mapping(uint256 => ProductBatch) public batches;
-    uint256[] public batchIds;
+    uint256 public eventCounter;
+    mapping(bytes32 => Product) public products;
+    mapping(bytes32 => TraceEvent[]) public productEvents;
 
-    event BatchCreated(uint256 indexed batchId, address producer);
-    event BatchAudited(
-        uint256 indexed batchId,
-        address auditor,
-        Grade grade,
-        string ipfsHash
-    );
-    event StatusUpdated(
-        uint256 indexed batchId,
-        address distributor,
-        Status status
+    event ProductCreated(string gtin, string lot, address actor);
+
+    event TraceEventAdded(
+        uint256 eventId,
+        string gtin,
+        string lot,
+        BizStep bizStep
     );
 
-    function registerBatch(
-        uint256 _batchId,
-        uint256 _harvestDate,
-        uint256 _expiryDate,
+    function createProduct(
+        string memory _gtin,
+        string memory _lot,
+        string memory _productName,
+        bytes32 _dataHash,
         bytes memory _signature
-    ) public onlyProducer {
+    ) public onlyGrower {
         bytes32 messageHash = keccak256(
-            abi.encodePacked(_batchId, _harvestDate, _expiryDate)
+            abi.encodePacked(_gtin, _lot, _productName, _dataHash)
         );
         require(
             _verifySignature(msg.sender, messageHash, _signature),
             "Invalid signature"
         );
 
-        require(batches[_batchId].batchId == 0, "Batch ID already exists");
+        bytes32 key = keccak256(abi.encodePacked(_gtin, _lot));
+        require(products[key].owner == address(0), "Product already exist");
 
-        ProductBatch memory newBatch = ProductBatch({
-            batchId: _batchId,
-            producer: msg.sender,
-            auditor: address(0),
-            grade: Grade.UNGRADED,
-            harvestDate: _harvestDate,
-            expiryDate: _expiryDate,
-            ipfsHash: "",
-            status: Status.REGISTERED,
-            isVerified: false
+        products[key] = Product({
+            gtin: _gtin,
+            lotNumber: _lot,
+            productName: _productName,
+            owner: msg.sender
         });
-        batches[_batchId] = newBatch;
-        batchIds.push(_batchId);
 
-        emit BatchCreated(_batchId, msg.sender);
+        eventCounter++;
+
+        string memory locationGLN = glnOf[msg.sender];
+        productEvents[key].push(
+            TraceEvent({
+                eventId: eventCounter,
+                gtin: _gtin,
+                lotNumber: _lot,
+                bizStep: BizStep.HARVESTING,
+                locationGLN: locationGLN,
+                timestamp: block.timestamp,
+                actor: msg.sender,
+                dataHash: _dataHash
+            })
+        );
+
+        emit ProductCreated(_gtin, _lot, msg.sender);
     }
 
-    function auditBatch(
-        uint256 _batchId,
-        Grade _grade,
-        string memory _ipfsHash,
+    function addTraceEvent(
+        string memory _gtin,
+        string memory _lot,
+        BizStep _bizStep,
+        bytes32 _dataHash,
         bytes memory _signature
-    ) public onlyAuditor {
+    ) public onlyActor {
         bytes32 messageHash = keccak256(
-            abi.encodePacked(_batchId, _grade, _ipfsHash)
+            abi.encodePacked(_gtin, _lot, _bizStep, _dataHash)
         );
         require(
             _verifySignature(msg.sender, messageHash, _signature),
             "Invalid signature"
         );
 
-        require(batches[_batchId].batchId != 0, "Batch not found");
-        require(
-            batches[_batchId].status == Status.REGISTERED,
-            "Batch not in registered status"
-        );
+        bytes32 key = keccak256(abi.encodePacked(_gtin, _lot));
+        require(products[key].owner != address(0), "Product not found");
 
-        batches[_batchId].auditor = msg.sender;
-        batches[_batchId].grade = _grade;
-        batches[_batchId].ipfsHash = _ipfsHash;
-        batches[_batchId].status = Status.AUDITED;
-
-        if (_grade == Grade.REJECTED) {
-            batches[_batchId].isVerified = false;
-        } else {
-            batches[_batchId].isVerified = true;
+        if (_bizStep == BizStep.RECEIVING) {
+            products[key].owner = msg.sender;
         }
 
-        emit BatchAudited(_batchId, msg.sender, _grade, _ipfsHash);
-    }
+        eventCounter++;
 
-    function updateTransferStatus(
-        uint256 _batchId,
-        Status _newStatus,
-        bytes memory _signature
-    ) public onlyDistributor {
-        bytes32 messageHash = keccak256(abi.encodePacked(_batchId, _newStatus));
-        require(
-            _verifySignature(msg.sender, messageHash, _signature),
-            "Invalid signature"
+        string memory locationGLN = glnOf[msg.sender];
+        productEvents[key].push(
+            TraceEvent({
+                eventId: eventCounter,
+                gtin: _gtin,
+                lotNumber: _lot,
+                bizStep: _bizStep,
+                locationGLN: locationGLN,
+                timestamp: block.timestamp,
+                actor: msg.sender,
+                dataHash: _dataHash
+            })
         );
 
-        require(batches[_batchId].batchId != 0, "Batch not found");
-        require(
-            batches[_batchId].status != Status.DELIVERED,
-            "Batch already delivered"
-        );
-        require(batches[_batchId].isVerified == true, "Batch not verified");
-
-        batches[_batchId].status = _newStatus;
-
-        emit StatusUpdated(_batchId, msg.sender, _newStatus);
+        emit TraceEventAdded(eventCounter, _gtin, _lot, _bizStep);
     }
 
-    function getAllBatches() public view returns (ProductBatch[] memory) {
-        uint256 totalBatches = batchIds.length;
-        ProductBatch[] memory allBatches = new ProductBatch[](totalBatches);
-
-        for (uint256 i = 0; i < totalBatches; i++) {
-            uint256 currentId = batchIds[i];
-            allBatches[i] = batches[currentId];
-        }
-
-        return allBatches;
+    function getProductHistory(
+        string memory _gtin,
+        string memory _lot
+    ) public view returns (TraceEvent[] memory) {
+        bytes32 key = keccak256(abi.encodePacked(_gtin, _lot));
+        return productEvents[key];
     }
 }

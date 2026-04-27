@@ -13,16 +13,14 @@ contract ProductTracker is AccessControl, SignatureValidator {
     }
 
     struct Product {
-        string gtin;
-        string lotNumber;
-        string productName;
+        bytes32 productId; // hash dari GTIN + lot number
         address owner;
+        bytes32 dataHash;
     }
 
     struct TraceEvent {
         uint256 eventId;
-        string gtin;
-        string lotNumber;
+        bytes32 productId; // hash dari GTIN + lot number
         BizStep bizStep;
         string locationGLN;
         uint256 timestamp;
@@ -34,48 +32,41 @@ contract ProductTracker is AccessControl, SignatureValidator {
     mapping(bytes32 => Product) public products;
     mapping(bytes32 => TraceEvent[]) public productEvents;
 
-    event ProductCreated(string gtin, string lot, address actor);
+    event ProductCreated(bytes32 productId, address actor);
 
-    event TraceEventAdded(
-        uint256 eventId,
-        string gtin,
-        string lot,
-        BizStep bizStep
-    );
+    event TraceEventAdded(uint256 eventId, bytes32 productId, BizStep bizStep);
 
     function createProduct(
-        string memory _gtin,
-        string memory _lot,
-        string memory _productName,
+        bytes32 _productId,
         bytes32 _dataHash,
         bytes memory _signature
     ) public onlyGrower {
         bytes32 messageHash = keccak256(
-            abi.encodePacked(_gtin, _lot, _productName, _dataHash)
+            abi.encodePacked(_productId, _dataHash)
         );
         require(
             _verifySignature(msg.sender, messageHash, _signature),
             "Invalid signature"
         );
 
-        bytes32 key = keccak256(abi.encodePacked(_gtin, _lot));
-        require(products[key].owner == address(0), "Product already exist");
+        require(
+            products[_productId].owner == address(0),
+            "Product already exist"
+        );
 
-        products[key] = Product({
-            gtin: _gtin,
-            lotNumber: _lot,
-            productName: _productName,
-            owner: msg.sender
+        products[_productId] = Product({
+            productId: _productId,
+            owner: msg.sender,
+            dataHash: _dataHash
         });
 
         eventCounter++;
 
         string memory locationGLN = glnOf[msg.sender];
-        productEvents[key].push(
+        productEvents[_productId].push(
             TraceEvent({
                 eventId: eventCounter,
-                gtin: _gtin,
-                lotNumber: _lot,
+                productId: _productId,
                 bizStep: BizStep.HARVESTING,
                 locationGLN: locationGLN,
                 timestamp: block.timestamp,
@@ -84,39 +75,36 @@ contract ProductTracker is AccessControl, SignatureValidator {
             })
         );
 
-        emit ProductCreated(_gtin, _lot, msg.sender);
+        emit ProductCreated(_productId, msg.sender);
     }
 
     function addTraceEvent(
-        string memory _gtin,
-        string memory _lot,
+        bytes32 _productId,
         BizStep _bizStep,
         bytes32 _dataHash,
         bytes memory _signature
     ) public onlyActor {
         bytes32 messageHash = keccak256(
-            abi.encodePacked(_gtin, _lot, _bizStep, _dataHash)
+            abi.encodePacked(_productId, _bizStep, _dataHash)
         );
         require(
             _verifySignature(msg.sender, messageHash, _signature),
             "Invalid signature"
         );
 
-        bytes32 key = keccak256(abi.encodePacked(_gtin, _lot));
-        require(products[key].owner != address(0), "Product not found");
+        require(products[_productId].owner != address(0), "Product not found");
 
         if (_bizStep == BizStep.RECEIVING) {
-            products[key].owner = msg.sender;
+            products[_productId].owner = msg.sender;
         }
 
         eventCounter++;
 
         string memory locationGLN = glnOf[msg.sender];
-        productEvents[key].push(
+        productEvents[_productId].push(
             TraceEvent({
                 eventId: eventCounter,
-                gtin: _gtin,
-                lotNumber: _lot,
+                productId: _productId,
                 bizStep: _bizStep,
                 locationGLN: locationGLN,
                 timestamp: block.timestamp,
@@ -125,14 +113,12 @@ contract ProductTracker is AccessControl, SignatureValidator {
             })
         );
 
-        emit TraceEventAdded(eventCounter, _gtin, _lot, _bizStep);
+        emit TraceEventAdded(eventCounter, _productId, _bizStep);
     }
 
     function getProductHistory(
-        string memory _gtin,
-        string memory _lot
+        bytes32 _productId
     ) public view returns (TraceEvent[] memory) {
-        bytes32 key = keccak256(abi.encodePacked(_gtin, _lot));
-        return productEvents[key];
+        return productEvents[_productId];
     }
 }

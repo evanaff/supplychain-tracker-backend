@@ -6,7 +6,6 @@ contract AccessControl {
     mapping(address => string) public glnOf;
     mapping(string => bool) public glnUsed;
     mapping(address => bool) public growers;
-    mapping(address => bool) public packers;
     mapping(address => bool) public distributors;
     mapping(address => bool) public retailers;
 
@@ -30,9 +29,8 @@ contract AccessControl {
     modifier onlyActor() {
         require(
             growers[msg.sender] ||
-                packers[msg.sender] ||
-                distributors[msg.sender] ||
-                retailers[msg.sender],
+            distributors[msg.sender] ||
+            retailers[msg.sender],
             "Unauthorized access"
         );
         _;
@@ -49,19 +47,6 @@ contract AccessControl {
         glnOf[_account] = _gln;
 
         emit ActorAdded(_account, "Grower");
-    }
-
-    function addPacker(address _account, string memory _gln) public onlyAdmin {
-        require(_account != address(0), "Address cannot be empty");
-        require(!packers[_account], "Packer address already registered");
-
-        packers[_account] = true;
-
-        require(!glnUsed[_gln], "GLN already used");
-        glnUsed[_gln] = true;
-        glnOf[_account] = _gln;
-
-        emit ActorAdded(_account, "Packer");
     }
 
     function addDistributor(

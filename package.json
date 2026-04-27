@@ -4,7 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon",
+    "db-push": "npx drizzle-kit push",
+    "node": "npx hardhat node",
+    "contract": "npx hardhat ignition deploy ./ignition/modules/ProductTracker.ts --network localhost"
   },
   "keywords": [],
   "author": "",
@@ -21,15 +25,35 @@
     "@typechain/ethers-v6": "^0.5.1",
     "@typechain/hardhat": "^9.1.0",
     "@types/chai": "^4.3.20",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/mocha": "^10.0.10",
+    "@types/multer": "^2.1.0",
     "@types/node": "^25.3.5",
+    "@types/pg": "^8.20.0",
     "chai": "^4.5.0",
+    "drizzle-kit": "^0.31.10",
     "ethers": "^6.16.0",
     "hardhat": "^2.28.6",
     "hardhat-gas-reporter": "^2.3.0",
+    "nodemon": "^3.1.14",
     "solidity-coverage": "^0.8.17",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typechain": "^8.3.2",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.1",
+    "drizzle-orm": "^0.45.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.1.1",
+    "pg": "^8.20.0",
+    "pinata": "^2.5.5",
+    "siwe": "^3.0.0",
+    "zod": "^4.3.6"
   }
 }

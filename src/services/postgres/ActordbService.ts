@@ -1,15 +1,14 @@
-import { isAddress } from "ethers";
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 import InvariantError from "../../common/exceptions/InvariantError";
 import * as schema from "../../lib/db/schema";
 import { eq } from "drizzle-orm";
 import { db } from "../../lib/db";
-import { getContract } from "../../lib/contract";
+import NotFoundError from "../../common/exceptions/NotFoundError";
 
 type DB = NodePgDatabase<typeof schema>;
 
-class ActorService {
+class ActordbService {
     async addActor(
         blockchainAddress: string,
         gln: string,
@@ -17,10 +16,6 @@ class ActorService {
         name: string,
         conn: DB
     ) {
-        if (!isAddress(blockchainAddress)){
-            throw new InvariantError("Invalid ethereum address");
-        }
-
         const lowerCaseBlockchainAddress = blockchainAddress.toLowerCase();
         
         const exist = await conn.query.actors.findFirst({
@@ -29,26 +24,6 @@ class ActorService {
         
         if (exist) {
             throw new InvariantError("User is already registered");
-        }
-
-        const contract = getContract();
-
-        let tx
-        switch (role) {
-            case "GROWER":
-                tx = await contract.addGrower(blockchainAddress, gln);
-                await tx.wait();
-                break;
-            case "DISTRIBUTOR":
-                tx = await contract.addDistributor(blockchainAddress, gln);
-                await tx.wait();
-                break;
-                case "RETAILER":
-                tx = await contract.addRetailer(blockchainAddress, gln);
-                await tx.wait();
-                break;
-            default:
-                throw new InvariantError("Invalid role")
         }
 
         const result = await conn.insert(schema.actors).values({
@@ -69,6 +44,19 @@ class ActorService {
         const actors = await db.query.actors.findMany();
         return actors;
     }
+
+    async deleteActorByAddress(address: string) {
+        const lowerCaseAddress = address.toLowerCase();
+        const actor = await db.query.actors.findFirst({
+            where: eq(schema.actors.blockchainAddress, lowerCaseAddress)
+        });
+
+        if (!actor) {
+            throw new NotFoundError("Actor not found");
+        }
+
+        await db.delete(schema.actors).where(eq(schema.actors.blockchainAddress, lowerCaseAddress));
+    }
 }
 
-export default ActorService;
+export default ActordbService;

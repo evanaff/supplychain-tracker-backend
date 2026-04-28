@@ -3,7 +3,7 @@ import * as handler from "../handlers/auth.handler";
 
 const router = Router();
 
-router.get('/nonce', handler.getGenerateNonce);
-router.post('/verify', handler.postVerifySignature)
+router.get('/nonce', handler.getGenerateNonceHandler);
+router.post('/verify', handler.postVerifySignatureHandler)
 
 export default router;

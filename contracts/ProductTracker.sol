@@ -40,7 +40,7 @@ contract ProductTracker is AccessControl, SignatureValidator {
         bytes32 _productId,
         bytes32 _dataHash,
         bytes memory _signature
-    ) public onlyGrower {
+    ) public onlyRole(Role.GROWER) {
         bytes32 messageHash = keccak256(
             abi.encodePacked(_productId, _dataHash)
         );

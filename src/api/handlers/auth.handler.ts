@@ -1,12 +1,12 @@
 import { type Request, type Response, type NextFunction } from "express";
 
-import AuthService from "../../services/postgres/AuthService";
+import AuthService from "../../services/postgres/AuthdbService";
 import AuthValidator from "../../validator/auth";
 import InvariantError from "../../common/exceptions/InvariantError";
 
 const authService = new AuthService();
 
-export const getGenerateNonce = async (req: Request, res: Response, next: NextFunction) => {
+export const getGenerateNonceHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
         let address = req.query.address?.toString();
         if (!address) {
@@ -26,7 +26,7 @@ export const getGenerateNonce = async (req: Request, res: Response, next: NextFu
     }
 }
 
-export const postVerifySignature = async (req: Request, res: Response, next: NextFunction) => {
+export const postVerifySignatureHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const payload = req.body;
         AuthValidator.validateVerifySignaturePayload(payload);

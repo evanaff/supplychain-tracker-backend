@@ -7,15 +7,14 @@ import { eq } from "drizzle-orm";
 
 type DB = NodePgDatabase<typeof schema>;
 
-class LocationService {
+class LocationdbService {
     async addLocation(
+        gln: string,
         name: string,
         address: string,
         role: string,
         conn: DB
     ) {
-        const gln = await this.generateGln();
-
         let type
         switch (role) {
             case "GROWER":
@@ -64,4 +63,4 @@ class LocationService {
     }
 }
 
-export default LocationService;
+export default LocationdbService;

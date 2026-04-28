@@ -10,7 +10,7 @@ import { eq } from "drizzle-orm";
 import NotFoundError from "../../common/exceptions/NotFoundError";
 import config from "../../common/config";
 
-class AuthService {
+class AuthdbService {
     async generateNonce(address: string) {
         if (!isAddress(address)) {
             throw new InvariantError("Invalid ethereum address")
@@ -94,4 +94,4 @@ class AuthService {
     }
 }
 
-export default AuthService;
+export default AuthdbService;

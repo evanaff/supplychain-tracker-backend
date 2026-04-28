@@ -1,11 +1,13 @@
 import { type Request, type Response, type NextFunction } from "express";
 
-import ActorService from "../../services/postgres/ActorService";
-import LocationService from "../../services/postgres/LocationService";
+import ActordbService from "../../services/postgres/ActordbService";
+import ActorEthService from "../../services/ethereum/ActorEthService";
+import LocationService from "../../services/postgres/LocationdbService";
 import ActorValidator from "../../validator/actor";
 import { db } from "../../lib/db";
 
-const actorService = new ActorService();
+const actordbService = new ActordbService();
+const actorEthService = new ActorEthService();
 const locationService = new LocationService();
 
 export const postAddActorHandler = async (req: Request, res: Response, next: NextFunction) => {
@@ -17,10 +19,12 @@ export const postAddActorHandler = async (req: Request, res: Response, next: Nex
         const { locationName, address } = location;
 
         // Add Actor and Location
+        const gln = await locationService.generateGln();
+        await actorEthService.AddActor(blockchainAddress, gln, role);
         let actor
         await db.transaction(async (tx) => {
-            const location = await locationService.addLocation(locationName, address, role, tx);
-            actor = await actorService.addActor(blockchainAddress, location.gln, role, actorName, tx);      
+            await locationService.addLocation(gln, locationName, address, role, tx);
+            actor = await actordbService.addActor(blockchainAddress, gln, role, actorName, tx);
         })
 
         res.status(201).json({
@@ -34,16 +38,32 @@ export const postAddActorHandler = async (req: Request, res: Response, next: Nex
     }
 }
 
-export const getAllActors = async (req: Request, res: Response, next: NextFunction) => {
+export const getAllActorsHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const actors = await actorService.getAllActors();
+        const actors = await actordbService.getAllActors();
 
         res.json({
-            message: 'success',
+            status: 'success',
             data: {
                 actors
             }
         })
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const deleteActorHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const actorAddress = req.params.actorAddress as string;
+        
+        await actorEthService.deleteActor(actorAddress);
+        await actordbService.deleteActorByAddress(actorAddress);
+
+        res.json({
+            status: 'success',
+            message: 'Actor deleted successfully'
+        });
     } catch (error) {
         next(error);
     }

@@ -41,13 +41,29 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
 export const verifyAdmin = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const user = req.user;
-    
         if (!user) {
             throw new AuthorizationError("No user data provided");
         }
 
-        if (user.role != 'ADMIN') {
+        if (user.role != "ADMIN") {
             throw new AuthorizationError("Admin access required")
+        }
+
+        next();
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const onlyGrower = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const user = req.user;
+        if (!user) {
+            throw new AuthorizationError("No user data provided");
+        }
+
+        if (user.role !== "GROWER") {
+            throw new AuthorizationError("Grower access required");
         }
 
         next();

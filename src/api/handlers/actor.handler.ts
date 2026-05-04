@@ -1,13 +1,11 @@
 import { type Request, type Response, type NextFunction } from "express";
 
 import ActordbService from "../../services/postgres/ActordbService";
-import ActorEthService from "../../services/ethereum/ActorEthService";
 import LocationService from "../../services/postgres/LocationdbService";
 import ActorValidator from "../../validator/actor";
 import { db } from "../../lib/db";
 
 const actordbService = new ActordbService();
-const actorEthService = new ActorEthService();
 const locationService = new LocationService();
 
 export const postAddActorHandler = async (req: Request, res: Response, next: NextFunction) => {
@@ -20,7 +18,6 @@ export const postAddActorHandler = async (req: Request, res: Response, next: Nex
 
         // Add Actor and Location
         const gln = await locationService.generateGln();
-        await actorEthService.AddActor(blockchainAddress, gln, role);
         let actor
         await db.transaction(async (tx) => {
             await locationService.addLocation(gln, locationName, address, role, tx);
@@ -57,7 +54,7 @@ export const deleteActorHandler = async (req: Request, res: Response, next: Next
     try {
         const actorAddress = req.params.actorAddress as string;
         
-        await actorEthService.deleteActor(actorAddress);
+        // await actorEthService.deleteActor(actorAddress);
         await actordbService.deleteActorByAddress(actorAddress);
 
         res.json({

@@ -31,7 +31,7 @@ export const postVerifySignatureHandler = async (req: Request, res: Response, ne
         const payload = req.body;
         AuthValidator.validateVerifySignaturePayload(payload);
         const { message, signature } = payload;
-
+        
         const token = await authService.verifyMessage(message, signature);
 
         res.json({

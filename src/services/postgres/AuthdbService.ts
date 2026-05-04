@@ -19,7 +19,7 @@ class AuthdbService {
         
         const nonce = generateNonce();
         const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-
+        
         await db.delete(nonces).where(eq(nonces.address, lowerCaseAddress));
         const result = await db.insert(nonces).values({
             address: lowerCaseAddress,

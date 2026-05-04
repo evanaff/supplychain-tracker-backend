@@ -6,6 +6,7 @@ import ClientError from './common/exceptions/ClientError.js';
 
 import actorRoutes from "./api/routes/actor.routes.js";
 import authRoutes from "./api/routes/auth.routes.js";
+import productRoutes from "./api/routes/product.routes.js";
 
 const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
     if (err instanceof ClientError) {
@@ -34,6 +35,7 @@ const init = async () => {
 
     app.use('/api/auth', authRoutes);
     app.use('/api/actors', actorRoutes);
+    app.use('/api/products', productRoutes);
 
     app.use(errorHandler);
 

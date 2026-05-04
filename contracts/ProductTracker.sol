@@ -5,120 +5,59 @@ import "./AccessControl.sol";
 import "./SignatureValidator.sol";
 
 contract ProductTracker is AccessControl, SignatureValidator {
-    enum BizStep {
-        HARVESTING,
-        PACKING,
-        SHIPPING,
-        RECEIVING
-    }
-
-    struct Product {
-        bytes32 productId; // hash dari GTIN + lot number
-        address owner;
-        bytes32 dataHash;
-    }
-
     struct TraceEvent {
+        uint256 productId;
         uint256 eventId;
-        bytes32 productId; // hash dari GTIN + lot number
-        BizStep bizStep;
-        string locationGLN;
-        uint256 timestamp;
         address actor;
         bytes32 dataHash;
     }
 
-    uint256 public eventCounter;
-    mapping(bytes32 => Product) public products;
-    mapping(bytes32 => TraceEvent[]) public productEvents;
+    mapping(uint256 => TraceEvent) public events;
+    mapping(uint256 => uint256[]) public productEventIds;
 
-    event ProductCreated(bytes32 productId, address actor);
-
-    event TraceEventAdded(uint256 eventId, bytes32 productId, BizStep bizStep);
-
-    function createProduct(
-        bytes32 _productId,
+    function addTraceEvent(
+        uint256 _eventId,
+        uint256 _productId,
+        address _actor,
         bytes32 _dataHash,
         bytes memory _signature
-    ) public onlyRole(Role.GROWER) {
+    ) public authorizeAccess {
         bytes32 messageHash = keccak256(
-            abi.encodePacked(_productId, _dataHash)
+            abi.encode(_eventId, _productId, _actor, _dataHash)
         );
         require(
-            _verifySignature(msg.sender, messageHash, _signature),
+            _verifySignature(_actor, messageHash, _signature),
             "Invalid signature"
         );
 
-        require(
-            products[_productId].owner == address(0),
-            "Product already exist"
-        );
-
-        products[_productId] = Product({
+        events[_eventId] = TraceEvent({
             productId: _productId,
-            owner: msg.sender,
+            eventId: _eventId,
+            actor: _actor,
             dataHash: _dataHash
         });
 
-        eventCounter++;
-
-        string memory locationGLN = glnOf[msg.sender];
-        productEvents[_productId].push(
-            TraceEvent({
-                eventId: eventCounter,
-                productId: _productId,
-                bizStep: BizStep.HARVESTING,
-                locationGLN: locationGLN,
-                timestamp: block.timestamp,
-                actor: msg.sender,
-                dataHash: _dataHash
-            })
+        productEventIds[_productId].push(
+            _eventId
         );
-
-        emit ProductCreated(_productId, msg.sender);
-    }
-
-    function addTraceEvent(
-        bytes32 _productId,
-        BizStep _bizStep,
-        bytes32 _dataHash,
-        bytes memory _signature
-    ) public onlyActor {
-        bytes32 messageHash = keccak256(
-            abi.encodePacked(_productId, _bizStep, _dataHash)
-        );
-        require(
-            _verifySignature(msg.sender, messageHash, _signature),
-            "Invalid signature"
-        );
-
-        require(products[_productId].owner != address(0), "Product not found");
-
-        if (_bizStep == BizStep.RECEIVING) {
-            products[_productId].owner = msg.sender;
-        }
-
-        eventCounter++;
-
-        string memory locationGLN = glnOf[msg.sender];
-        productEvents[_productId].push(
-            TraceEvent({
-                eventId: eventCounter,
-                productId: _productId,
-                bizStep: _bizStep,
-                locationGLN: locationGLN,
-                timestamp: block.timestamp,
-                actor: msg.sender,
-                dataHash: _dataHash
-            })
-        );
-
-        emit TraceEventAdded(eventCounter, _productId, _bizStep);
     }
 
     function getProductHistory(
-        bytes32 _productId
+        uint256 _productId
     ) public view returns (TraceEvent[] memory) {
-        return productEvents[_productId];
+        uint256[] memory ids = productEventIds[_productId];
+        TraceEvent[] memory result = new TraceEvent[](ids.length);
+
+        for (uint i = 0; i < ids.length; i++) {
+            result[i] = events[ids[i]];
+        }
+
+        return result;
+    }
+
+    function getProductEvent(
+        uint256 _eventId
+    ) public view returns (TraceEvent memory) {
+        return events[_eventId];
     }
 }

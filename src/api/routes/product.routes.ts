@@ -1,13 +1,16 @@
 import { Router } from "express";
 import * as handler from "../handlers/product.handler";
-import { authenticateUser, onlyGrower } from "../../lib/middleware";
+import { authenticateUser, authorizeUser } from "../../lib/middleware";
 
 const router = Router();
 
-router.post('/initial', authenticateUser, onlyGrower, handler.postCreateInitialProduct);
-router.post('/trace', authenticateUser, onlyGrower, handler.postAddBlockchainTraceEvent);
+router.post("/:gtin/initial", authenticateUser, authorizeUser("GROWER"), handler.postCreateInitialProduct);
+router.post("/trace-event/:eventId/blockchain", authenticateUser, authorizeUser("GROWER"), handler.postAddBlockchainTraceEvent);
 
-router.post('/shipping', authenticateUser, handler.postShippingTraceProduct);
-router.post('/receiving', authenticateUser, handler.postReceivingTraceProduct);
+router.post("/:productId/shipping", authenticateUser, handler.postShippingTraceProduct);
+router.post("/:productId/receiving", authenticateUser, authorizeUser("DISTRIBUTOR", "RETAILER"), handler.postReceivingTraceProduct);
+
+router.get("/trace-event/:eventId/verify", handler.getVerifyTraceEvent);
+router.get("/:productId/history", handler.getProductHistrory);
 
 export default router;

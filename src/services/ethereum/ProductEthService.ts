@@ -67,7 +67,7 @@ class ProductEthService {
             where: eq(traceEvents.eventId, eventId)
         });
         if (!traceEvent) {
-            throw new NotFoundError("Trace event not foun");
+            throw new NotFoundError("Trace event not found");
         }
 
         const contract = getContract();
@@ -81,6 +81,26 @@ class ProductEthService {
         }
 
         return tx.hash;
+    }
+
+    async getTraceEventById(eventId: number) {
+        const traceEventDb = await db.query.traceEvents.findFirst({
+            where: eq(traceEvents.eventId, eventId)
+        });
+        if (!traceEventDb) {
+            throw new NotFoundError("Trace event not found");
+        }
+
+        const contract = getContract();
+
+        let traceEventEth
+        try {
+            traceEventEth = await contract.getProductEvent(eventId);
+        } catch (error: any) {
+            throw new InvariantError(`Blockchain transaction failed: ${error.reason}`);
+        }
+
+        return traceEventEth;
     }
 }
 

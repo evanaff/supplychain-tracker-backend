@@ -2,58 +2,11 @@ import { and, eq, like } from "drizzle-orm";
 import { db } from "../../lib/db";
 import { actors, products, productTypes, traceEvents } from "../../lib/db/schema";
 import NotFoundError from "../../common/exceptions/NotFoundError";
-import { isAddress, keccak256, toUtf8Bytes } from "ethers";
+import { isAddress, solidityPackedKeccak256 } from "ethers";
 import InvariantError from "../../common/exceptions/InvariantError";
+import { desc } from "drizzle-orm";
 
 class ProductdbService {
-    // async generateInitialProductData(gtin: string, address: string) {
-    //     const productType = await db.query.productTypes.findFirst({
-    //         where: eq(productTypes.gtin, gtin)
-    //     });
-    //     if (!productType) {
-    //         throw new NotFoundError("Product type not found");
-    //     }
-
-    //     const lotNumber = await this.generateLotNumber(gtin);
-    //     const productId = await this.generateProductId();
-    //     const product =  {
-    //         productId,
-    //         gtin,
-    //         lotNumber,
-    //         creatorBlockchainAddress: address
-    //     };
-
-    //     const eventId = await this.generateEventId();
-        
-    //     const actorRecord = await db.query.actors.findFirst({
-    //         where: eq(actors.blockchainAddress, address)
-    //     })
-    //     if (!actorRecord){
-    //         throw new NotFoundError("Actor not found")
-    //     }
-    //     const gln = actorRecord.gln;
-        
-    //     const supplyChainStep = "HARVESTING";
-    //     const timestamp = new Date().toISOString();
-
-    //     const hashPayload = {
-    //         eventId, productId, address, gln, supplyChainStep, timestamp
-    //     }
-    //     const dataHash = keccak256(toUtf8Bytes(JSON.stringify(hashPayload)));
-
-    //     const traceEvent = {
-    //         eventId,
-    //         productId,
-    //         actorBlockchainAddress: address,
-    //         gln,
-    //         supplyChainStep,
-    //         timestamp,
-    //         dataHash
-    //     };
-
-    //     return {product, traceEvent};
-    // }
-
     async createProduct(gtin: string, creatorBlockchainAddress: string) {
         if (!isAddress(creatorBlockchainAddress)) {
             throw new InvariantError("Invalid ethereum address")
@@ -72,6 +25,33 @@ class ProductdbService {
         }).returning();
 
         return product[0];
+    }
+
+    async validateSupplyChainStep(productId: number, supplychainStep: string) {
+        const traceEventRecords = await db.query.traceEvents.findMany({
+            where: eq(traceEvents.productId, productId),
+            orderBy: desc(traceEvents.timestamp)
+        });
+        if (traceEventRecords.length === 0) {
+            throw new NotFoundError("Initial trace event not found")
+        };
+
+        const lastTraceEvent = traceEventRecords[0];
+        
+        switch (supplychainStep) {
+            case "SHIPPING":
+                if (lastTraceEvent.supplychainStep === "SHIPPING") {
+                    throw new InvariantError("Invalid supplychain step sequence")
+                }
+                break;
+                case "RECEIVING":
+                if (lastTraceEvent.supplychainStep === "RECEIVING" || lastTraceEvent.supplychainStep === "HARVESTING") {
+                    throw new InvariantError("Invalid supplychain step sequence")
+                }
+                break;
+            default:
+                throw new InvariantError("Invalid Supplychain Step")
+        }
     }
 
     async createTraceEvent(productId: number, actorBlockchainAddress: string, supplychainStep: string) {
@@ -102,7 +82,6 @@ class ProductdbService {
 
     async updateTraceEvent(
         eventId: number,
-        dataHash: string,
         txHash: string
     ) {
         const traceEvent = await db.query.traceEvents.findFirst({
@@ -112,11 +91,52 @@ class ProductdbService {
             throw new NotFoundError("Trace event not found");
         }
         const updatedTraceEvent = await db.update(traceEvents).set({
-            dataHash,
             txHash
         }).where(eq(traceEvents.eventId, eventId)).returning();
 
         return updatedTraceEvent[0];
+    }
+
+    async computeTraceEventHash(eventId: number) {
+        const traceEvent = await db.query.traceEvents.findFirst({
+            where: eq(traceEvents.eventId, eventId)
+        });
+        if (!traceEvent) {
+            throw new NotFoundError("Trace event not found");
+        }
+
+        const timestamp =
+            typeof traceEvent.timestamp === "string"
+                ? traceEvent.timestamp
+                : traceEvent.timestamp.toISOString();
+        const dataHash = solidityPackedKeccak256(
+            ["uint256", "uint256", "address", "string", "string", "string"],
+            [
+                traceEvent.eventId,
+                traceEvent.productId,
+                traceEvent.actorBlockchainAddress,
+                traceEvent.gln,
+                traceEvent.supplychainStep,
+                timestamp
+            ]
+        );
+
+        return dataHash;
+    }
+
+    async getProductHistory(productId: number) {
+        const product = await db.query.products.findFirst({
+            where: eq(products.productId, productId)
+        });
+        if (!product) {
+            throw new NotFoundError("Product not found")
+        };
+
+        const traceEvent = await db.query.traceEvents.findMany({
+            where: eq(traceEvents.productId, productId)
+        });
+
+        return {product, traceEvent};
     }
 
     async generateLotNumber(gtin: string) {

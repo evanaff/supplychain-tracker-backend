@@ -109,8 +109,6 @@
         .notNull()
         .defaultNow(),
 
-      dataHash: text('data_hash'),
-      
       txHash: text('tx_hash'),
     },
     (table) => ({

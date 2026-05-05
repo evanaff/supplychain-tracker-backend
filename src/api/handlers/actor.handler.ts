@@ -54,7 +54,6 @@ export const deleteActorHandler = async (req: Request, res: Response, next: Next
     try {
         const actorAddress = req.params.actorAddress as string;
         
-        // await actorEthService.deleteActor(actorAddress);
         await actordbService.deleteActorByAddress(actorAddress);
 
         res.json({

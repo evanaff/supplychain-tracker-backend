@@ -82,6 +82,14 @@ class ProductdbService {
             throw new NotFoundError("Actor not found")
         }
         const gln = actorRecord.gln;
+
+        const productRecord = await db.query.products.findFirst({
+            where: eq(products.productId, productId)
+        });
+        if (!productRecord) {
+            throw new NotFoundError("Product not found")
+        }
+
         const traceEvent = await db.insert(traceEvents).values({
             productId,
             actorBlockchainAddress,

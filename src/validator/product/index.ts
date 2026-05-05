@@ -16,6 +16,14 @@ const ProductValidator = {
             const errorMessage = validationResult.error.issues[0].path + ', ' + validationResult.error.issues[0].message;
             throw new InvariantError(errorMessage);
         }
+    },
+
+    validateTraceProductPayloadSchema: async (payload: unknown) => {
+        const validationResult = schema.TraceProductPayloadSchema.safeParse(payload);
+        if (!validationResult.success) {
+            const errorMessage = validationResult.error.issues[0].path + ', ' + validationResult.error.issues[0].message;
+            throw new InvariantError(errorMessage);
+        }
     }
 }
 

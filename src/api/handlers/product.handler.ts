@@ -23,7 +23,7 @@ export const postCreateInitialProduct = async (req: Request, res: Response, next
         const product = await productdbService.createProduct(gtin, userAddress);
         const traceEvent = await productdbService.createTraceEvent(product.productId, userAddress, "HARVESTING");
 
-        res.json({
+        res.status(201).json({
             status: 'success',
             data: {
                 product,
@@ -54,6 +54,56 @@ export const postAddBlockchainTraceEvent = async (req: Request, res: Response, n
             status: 'success',
             data: {
                 traceEvent: updatedTraceEvent
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const postShippingTraceProduct = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const user = req.user;
+        if (!user) {
+            throw new AuthorizationError("Unauthorized access")
+        };
+        const userAddress = user.address;
+        
+        const payload = req.body;
+        ProductValidator.validateTraceProductPayloadSchema(payload);
+        const { productId } = payload;
+
+        const traceEvent = await productdbService.createTraceEvent(productId, userAddress, "SHIPPING");
+
+        res.status(201).json({
+            status: "success",
+            data: {
+                traceEvent
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const postReceivingTraceProduct = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const user = req.user;
+        if (!user) {
+            throw new AuthorizationError("Unauthorized access")
+        };
+        const userAddress = user.address;
+        
+        const payload = req.body;
+        ProductValidator.validateTraceProductPayloadSchema(payload);
+        const { productId } = payload;
+
+        const traceEvent = await productdbService.createTraceEvent(productId, userAddress, "RECEIVING");
+
+        res.status(201).json({
+            status: "success",
+            data: {
+                traceEvent
             }
         });
     } catch (error) {

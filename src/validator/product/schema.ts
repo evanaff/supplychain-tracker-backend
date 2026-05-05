@@ -8,3 +8,7 @@ export const InsertProductPayloadSchema = z.object({
   eventId: z.number(),
   signature: z.string()
 });
+
+export const TraceProductPayloadSchema = z.object({
+  productId: z.string()
+});

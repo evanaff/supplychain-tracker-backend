@@ -1,7 +1,7 @@
 import { type Request, type Response, type NextFunction } from "express";
 
-import ActordbService from "../../services/postgres/ActordbService";
-import LocationService from "../../services/postgres/LocationdbService";
+import ActordbService from "../../services/database/ActorService";
+import LocationService from "../../services/database/LocationService";
 import ActorValidator from "../../validator/actor";
 import { db } from "../../lib/db";
 
@@ -45,21 +45,6 @@ export const getAllActorsHandler = async (req: Request, res: Response, next: Nex
                 actors
             }
         })
-    } catch (error) {
-        next(error);
-    }
-}
-
-export const deleteActorHandler = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const actorAddress = req.params.actorAddress as string;
-        
-        await actordbService.deleteActorByAddress(actorAddress);
-
-        res.json({
-            status: 'success',
-            message: 'Actor deleted successfully'
-        });
     } catch (error) {
         next(error);
     }

@@ -1,8 +1,9 @@
 import { type Request, type Response, type NextFunction } from "express";
 
-import AuthService from "../../services/postgres/AuthdbService";
+import AuthService from "../../services/database/AuthService";
 import AuthValidator from "../../validator/auth";
 import InvariantError from "../../common/exceptions/InvariantError";
+import { SiweMessage } from "siwe";
 
 const authService = new AuthService();
 
@@ -26,18 +27,49 @@ export const getGenerateNonceHandler = async (req: Request, res: Response, next:
     }
 }
 
+export const postSiweMessageHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const payload = req.body;
+
+        const { domain, address, uri, version, chainId, nonce } = payload;
+
+        const siweMessage = new SiweMessage({
+            domain, 
+            address,
+            statement: "Sign in to SupplyChainTracker",
+            uri,
+            version,
+            chainId,
+            nonce,
+            issuedAt: new Date().toISOString(),
+        });
+
+        const message = siweMessage.prepareMessage();
+
+        res.json({
+            status: "success",
+            data: {
+                message
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 export const postVerifySignatureHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const payload = req.body;
         AuthValidator.validateVerifySignaturePayload(payload);
         const { message, signature } = payload;
         
-        const token = await authService.verifyMessage(message, signature);
+        const { token, role } = await authService.verifyMessage(message, signature);
 
         res.json({
             status: "success",
             data: {
-                token
+                token,
+                role
             }
         });
     } catch (error) {

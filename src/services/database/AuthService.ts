@@ -73,7 +73,7 @@ class AuthdbService {
             }
         )
 
-        return token;
+        return { token, role: record.role };
     }
     
     async getNonceByAddress(address: string) {

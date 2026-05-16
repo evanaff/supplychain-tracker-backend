@@ -21,6 +21,10 @@ interface Config {
     },
     rpc: {
         provider: string
+    },
+    supabase: {
+        url: string,
+        serviceKey: string
     }
 }
 
@@ -43,6 +47,10 @@ const config: Config = {
     },
     rpc: {
         provider: process.env.JSON_RPC_PROVIDER || 'http://127.0.0.1:8545'
+    },
+    supabase: {
+        url: process.env.SUPABASE_URL || '',
+        serviceKey: process.env.SUPABASE_SERVICE_KEY || ''
     }
 }
 

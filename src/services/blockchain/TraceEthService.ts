@@ -13,7 +13,7 @@ class ProductEthService {
         signature: string
     ) {
         const traceEvent = await db.query.traceEvents.findFirst({
-            where: eq(traceEvents.eventId, eventId)
+            where: eq(traceEvents.id, eventId)
         });
         if (!traceEvent) {
             throw new NotFoundError("Trace event not found");
@@ -26,8 +26,8 @@ class ProductEthService {
         const dataHash = solidityPackedKeccak256(
             ["uint256", "uint256", "address", "string", "string", "string"],
             [
-                traceEvent.eventId,
-                traceEvent.productId,
+                traceEvent.id,
+                traceEvent.traceProductId,
                 traceEvent.actorBlockchainAddress,
                 traceEvent.gln,
                 traceEvent.supplychainStep,
@@ -41,8 +41,8 @@ class ProductEthService {
             abiCoder.encode(
                 ["uint256", "uint256", "address", "bytes32"],
                 [
-                    traceEvent.eventId, 
-                    traceEvent.productId, 
+                    traceEvent.id, 
+                    traceEvent.traceProductId, 
                     traceEvent.actorBlockchainAddress, 
                     dataHash
                 ]
@@ -64,17 +64,21 @@ class ProductEthService {
         signature: string
     ) {
         const traceEvent = await db.query.traceEvents.findFirst({
-            where: eq(traceEvents.eventId, eventId)
+            where: eq(traceEvents.id, eventId)
         });
         if (!traceEvent) {
             throw new NotFoundError("Trace event not found");
+        }
+
+        if (traceEvent.onChainStatus !== "NOT_RECORDED") {
+            throw new InvariantError("Trace event has already been recorded")
         }
 
         const contract = getContract();
 
         let tx
         try {
-            tx = await contract.addTraceEvent(eventId, traceEvent.productId, traceEvent.actorBlockchainAddress, dataHash, signature);
+            tx = await contract.addTraceEvent(eventId, traceEvent.traceProductId, traceEvent.actorBlockchainAddress, dataHash, signature);
             tx.wait();
         } catch (error: any) {
             throw new InvariantError(`Blockchain transaction failed: ${error.reason}`);
@@ -85,7 +89,7 @@ class ProductEthService {
 
     async getTraceEventById(eventId: number) {
         const traceEventDb = await db.query.traceEvents.findFirst({
-            where: eq(traceEvents.eventId, eventId)
+            where: eq(traceEvents.id, eventId)
         });
         if (!traceEventDb) {
             throw new NotFoundError("Trace event not found");

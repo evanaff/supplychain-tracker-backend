@@ -8,6 +8,14 @@ const AuthValidator = {
             const errorMessage = validationResult.error.issues[0].path + ', ' + validationResult.error.issues[0].message;
             throw new InvariantError(errorMessage);
         }
+    },
+
+    validateRefreshTokenSchema: async (payload: unknown) => {
+        const validationResult = schema.RefreshTokenPayloadSchema.safeParse(payload);
+        if (!validationResult.success) {
+            const errorMessage = validationResult.error.issues[0].path + ', ' + validationResult.error.issues[0].message;
+            throw new InvariantError(errorMessage);
+        }
     }
 }
 

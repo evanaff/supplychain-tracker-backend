@@ -70,7 +70,7 @@ class ProductEthService {
             throw new NotFoundError("Trace event not found");
         }
 
-        if (traceEvent.onChainStatus !== "NOT_RECORDED") {
+        if (traceEvent.onChainStatus !== "PENDING") {
             throw new InvariantError("Trace event has already been recorded")
         }
 

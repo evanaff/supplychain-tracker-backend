@@ -63,16 +63,55 @@ export const postVerifySignatureHandler = async (req: Request, res: Response, ne
         AuthValidator.validateVerifySignaturePayload(payload);
         const { message, signature } = payload;
         
-        const { token, role } = await authService.verifyMessage(message, signature);
+        const { accessToken, refreshToken, actor } = await authService.verifyMessage(message, signature);
 
         res.json({
             status: "success",
             data: {
-                token,
-                role
+                accessToken,
+                refreshToken,
+                actor
             }
         });
     } catch (error) {
         next(error)
+    }
+}
+
+export const postRefreshTokenHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const payload = req.body;
+        AuthValidator.validateRefreshTokenSchema(payload);
+        const { refreshToken } = payload;
+
+        const { accessToken, newRefreshToken, actor } = await authService.refreshSession(refreshToken);
+
+        res.json({
+            status: "success",
+            data: {
+                accessToken,
+                refreshToken: newRefreshToken,
+                actor
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const deleteRefreshTokenHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const payload = req.body;
+        AuthValidator.validateRefreshTokenSchema(payload);
+        const { refreshToken } = payload;
+
+        await authService.deleteRefreshToken(refreshToken);
+
+        res.json({
+            status: "success",
+            message: "Refresh token deleted successfully"
+        })
+    } catch (error) {
+        next(error);
     }
 }

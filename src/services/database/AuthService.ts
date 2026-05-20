@@ -2,15 +2,17 @@ import { generateNonce } from "siwe";
 import { isAddress } from "ethers";
 import { SiweMessage } from "siwe";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
 import { db } from "../../lib/db";
-import { actors, nonces } from "../../lib/db/schema";
+import { actors, nonces, refreshTokens } from "../../lib/db/schema";
 import InvariantError from "../../common/exceptions/InvariantError";
 import { eq } from "drizzle-orm";
 import NotFoundError from "../../common/exceptions/NotFoundError";
 import config from "../../common/config";
+import AuthenticationError from "../../common/exceptions/AuthenticationError";
 
-class AuthdbService {
+class AuthService {
     async generateNonce(address: string) {
         if (!isAddress(address)) {
             throw new InvariantError("Invalid ethereum address")
@@ -62,18 +64,33 @@ class AuthdbService {
         if (!jwtSecret) {
             throw new Error("Jwt secret is empty")
         }
-        const token = jwt.sign(
+        const accessToken = jwt.sign(
             {
                 address: siweAddress,
+                name: record.name,
                 role: record.role
             },
             jwtSecret,
             {
                 expiresIn: "1h"
             }
-        )
+        );
 
-        return { token, role: record.role };
+        const refreshToken = crypto.randomBytes(64).toString("hex");
+        await db.insert(refreshTokens).values({
+            address: record.blockchainAddress,
+            token: refreshToken
+        });
+
+        return { 
+            accessToken, 
+            refreshToken, 
+            actor: {
+                address: siweAddress, 
+                name: record.name, 
+                role: record.role 
+            }
+            }
     }
     
     async getNonceByAddress(address: string) {
@@ -92,6 +109,61 @@ class AuthdbService {
 
         return record.nonce;
     }
+
+    async refreshSession(refreshToken: string) {   
+        const refreshTokenRecord = await db.query.refreshTokens.findFirst({
+            where: eq(refreshTokens.token, refreshToken)
+        });
+        if (!refreshTokenRecord || refreshTokenRecord.token !== refreshToken) {
+            throw new AuthenticationError("Invalid refresh token");
+        }
+
+        const actorRecord = await db.query.actors.findFirst({
+            where: eq(actors.blockchainAddress, refreshTokenRecord.address)
+        });
+        if (!actorRecord) {
+            throw new NotFoundError("Actor not found")
+        }
+
+        const jwtSecret = config.jwt.secret;
+        if (!jwtSecret) {
+            throw new Error("Jwt secret is empty")
+        }
+
+        const accessToken = jwt.sign(
+            {
+                address: actorRecord.blockchainAddress,
+                name: actorRecord.name,
+                role: actorRecord.role
+            },
+            jwtSecret,
+            {
+                expiresIn: "1h"
+            }
+        );
+
+        await db.delete(refreshTokens).where(eq(refreshTokens.token, refreshToken));
+        
+        const newRefreshToken = crypto.randomBytes(64).toString("hex");
+        await db.insert(refreshTokens).values({
+            address: actorRecord.blockchainAddress,
+            token: newRefreshToken
+        });
+
+        return { 
+            accessToken,
+            newRefreshToken,
+            actor: {
+                address: actorRecord.blockchainAddress, 
+                name: actorRecord.name, 
+                role: actorRecord.role 
+            }
+        }
+    }
+
+    async deleteRefreshToken(refreshToken: string){
+        await db.delete(refreshTokens).where(eq(refreshTokens.token, refreshToken));
+    }
 }
 
-export default AuthdbService;
+export default AuthService;

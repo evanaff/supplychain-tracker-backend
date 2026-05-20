@@ -6,3 +6,7 @@ export const VerifySignaturePayloadSchema = z.object({
     .string()
     .regex(/^0x[a-fA-F0-9]{130}$/, "Invalid Ethereum signature"),
 });
+
+export const RefreshTokenPayloadSchema = z.object({
+    refreshToken: z.string()
+});

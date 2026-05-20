@@ -22,6 +22,41 @@
       "when": 1777866086760,
       "tag": "0002_lowly_the_enforcers",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778817099593,
+      "tag": "0003_plain_felicia_hardy",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778817175361,
+      "tag": "0004_big_kylun",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779001949169,
+      "tag": "0005_material_whirlwind",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779002000389,
+      "tag": "0006_flawless_onslaught",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779002185571,
+      "tag": "0007_married_psynapse",
+      "breakpoints": true
     }
   ]
 }

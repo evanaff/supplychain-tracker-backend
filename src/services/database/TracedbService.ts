@@ -202,7 +202,8 @@ class TracedbService {
         });
 
         const traceEventRecords = await db.query.traceEvents.findMany({
-            where: eq(traceEvents.traceProductId, traceProductId)
+            where: eq(traceEvents.traceProductId, traceProductId),
+            orderBy: traceEvents.timestamp
         });
 
         return {traceProductRecord, productRecord, traceEventRecords};

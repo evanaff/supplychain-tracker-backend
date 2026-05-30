@@ -1,42 +1,22 @@
-import { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { and, eq, ilike } from "drizzle-orm";
 
-import InvariantError from "../../common/exceptions/InvariantError";
-import * as schema from "../../lib/db/schema";
 import { db } from "../../lib/db";
-import { eq } from "drizzle-orm";
+import * as schema from "../../lib/db/schema";
+import InvariantError from "../../common/exceptions/InvariantError";
+import NotFoundError from "../../common/exceptions/NotFoundError";
+import { EditLocationDTO, ListLocationsQueryDTO, type CreateLocationDTO } from "../../common/dto";
 
-type DB = NodePgDatabase<typeof schema>;
+class LocationService {
+    async createLocation(data: CreateLocationDTO) {
+        const gln = this.generateGln();
 
-class LocationdbService {
-    async addLocation(
-        gln: string,
-        name: string,
-        address: string,
-        role: string,
-        conn: DB
-    ) {
-        let type
-        switch (role) {
-            case "GROWER":
-                type = "FARM"
-                break;
-            case "DISTRIBUTOR":
-                type = "WAREHOUSE"
-                break;
-                case "RETAILER":
-                type = "STORE"
-                break;
-            default:
-                throw new InvariantError("Invalid role")
-        }
-
-        const result = await conn.insert(schema.locations).values({
+        const result = await db.insert(schema.locations).values({
             gln,
-            name,
-            address,
-            type
+            name: data.name,
+            province: data.province,
+            city: data.city,
+            address: data.address,
         }).returning();
-
         if (!result) {
             throw new InvariantError("Failed to add location");
         }
@@ -44,23 +24,75 @@ class LocationdbService {
         return result[0];
     }
 
-    async generateGln() {
-        while (true) {
-            let gln = "";
+    async listLocations(query: ListLocationsQueryDTO) {
+        const {
+                page = 1,
+                limit = 10,
+                search
+            } = query;
     
-            for (let i = 0; i < 13; i++) {
-                gln += Math.floor(Math.random() * 10);
+            const offset = (page - 1) * limit;
+    
+            const conditions = [];
+    
+            if (search) {
+                conditions.push(
+                    ilike(schema.locations.name, `%${search}%`)
+                );
             }
     
-            const exist = await db.query.locations.findFirst({
-                where: eq(schema.locations.gln, gln)
-            })
-            
-            if (!exist){
-                return gln;
-            }
+            const locationRecords = await db.query.locations.findMany({
+                where: conditions.length > 0
+                    ? and(...conditions)
+                    : undefined,
+                limit,
+                offset
+            });
+    
+            return locationRecords;
+    }
+
+    async getLocationByGln(gln: string) {
+        const locationRecord = await db.query.locations.findFirst({
+            where: eq(schema.locations.gln, gln)
+        });
+        if (!locationRecord) {
+            throw new NotFoundError("Location not found")
         }
+
+        return locationRecord;
+    }
+
+    async editLocationByGln(
+        gln: string,
+        data: EditLocationDTO
+    ) {
+        const locationRecord = await db.query.locations.findFirst({
+            where: eq(schema.locations.gln, gln)
+        });
+        if (!locationRecord) {
+            throw new NotFoundError("Location not found")
+        }
+
+        await db.update(schema.locations).set({
+            name: data.name,
+            province: data.province,
+            city: data.city,
+            address: data.address
+        });
+    }
+
+    generateGln() {
+        const companyPrefix = "950";
+
+        const randomPart = Array.from({ length: 10 }, () =>
+            Math.floor(Math.random() * 10)
+        ).join("");
+
+        const gln = `${companyPrefix}${randomPart}`.slice(0, 13);
+
+        return gln;
     }
 }
 
-export default LocationdbService;
+export default LocationService;

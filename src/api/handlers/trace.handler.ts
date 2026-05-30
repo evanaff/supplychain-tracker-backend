@@ -1,145 +1,146 @@
 import { type Request, type Response, type NextFunction } from "express";
 
-import AuthorizationError from "../../common/exceptions/AuthorizationError";
 import TracedbService from "../../services/database/TracedbService";
 import TraceEthService from "../../services/blockchain/TraceEthService";
-import ProductValidator from "../../validator/trace";
+import TraceValidator from "../../validator/trace";
+import AuthorizationError from "../../common/exceptions/AuthorizationError";
 import InvariantError from "../../common/exceptions/InvariantError";
+import { ListTraceProductsQueryDTO } from "../../common/dto";
 
 const tracedbService = new TracedbService();
 const traceEthService = new TraceEthService();
 
-export const postCreateInitialTraceProduct = async (req: Request, res: Response, next: NextFunction) => {
+// --------------------------
+// Trace Product Handlers
+// --------------------------
+
+export const postCreateTraceProductHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
+        // Get User Address
         const user = req.user;
         if (!user) {
             throw new AuthorizationError("Unauthorized access");
         }
         const userAddress = user.address;
-        
-        const gtin = req.params.gtin as string;
-        
-        const traceProduct = await tracedbService.createTraceProduct(gtin, userAddress);
-        const traceEvent = await tracedbService.createTraceEvent(traceProduct.id, userAddress, "HARVESTING");
+
+        // Validate Payload
+        const payload = req.body;
+        TraceValidator.validateCreateTraceProductPayloadSchema(payload);
+
+        // Create Trace Product
+        const traceProduct = await tracedbService.createTraceProduct(userAddress, payload);
 
         res.status(201).json({
-            status: 'success',
+            status: "success",
+            data: {
+                traceProduct
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const getListTraceProductsHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Get User Address
+        const user = req.user;
+        if (!user) {
+            throw new AuthorizationError("Unauthorized access");
+        }
+        const userAddress = user.address;
+
+        // Get Query
+        const query: ListTraceProductsQueryDTO = {
+            page: Number(req.query.page) || 1,
+            limit: Number(req.query.limit) || 10,
+        };
+
+        // List Trace Products
+        const traceProducts = await tracedbService.listTraceProducts(userAddress, query);
+
+        res.json({
+            status: "success",
+            data: {
+                traceProducts
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const getTraceProductHistoryHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Get Params
+        const traceProductId = req.params.id as string;
+        if (!traceProductId) {
+            throw new InvariantError("Id is required")
+        }
+
+        // Get Trace Product History
+        const traceProduct = await tracedbService.getTraceProductById(traceProductId);
+        const traceEvents = await tracedbService.getTraceEventsByTraceProductId(traceProductId);
+
+        res.json({
+            status: "success",
             data: {
                 traceProduct,
-                traceEvent
+                traceEvents
             }
-        })
+        });
     } catch (error) {
         next(error);
     }
 }
 
-export const postAddBlockchainTraceEvent = async (req: Request, res: Response, next: NextFunction) => {
+// -----------------------
+// Trace Event Handlers
+// -----------------------
+
+export const postCreateHarvestingEventHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
+        // Get User Address
         const user = req.user;
         if (!user) {
             throw new AuthorizationError("Unauthorized access");
         }
+        const userAddress = user.address;
 
-        const eventId = Number(req.params.eventId);
-        if (!eventId) {
-            throw new InvariantError("Invalid eventId format");
+        // Validate Payload
+        const payload = req.body;
+        TraceValidator.validateCreateGeneralEventPayloadSchema(payload);
+
+        // Create Harvesting Event
+        await tracedbService.validateTraceEventSequence(payload, "HARVESTING");
+        const traceEvent = await tracedbService.createTraceEvent(userAddress, payload, "HARVESTING");
+
+        res.status(201).json({
+            status: "success",
+            data: {
+                traceEvent
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const postCreateShippingEventHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Get User Address
+        const user = req.user;
+        if (!user) {
+            throw new AuthorizationError("Unauthorized access");
         }
+        const userAddress = user.address;
 
         const payload = req.body;
-        ProductValidator.validateInsertProductSchema(payload);
-        const { signature } = payload;
+        TraceValidator.validateCreateShippingEventPayloadSchema(payload);
 
-        const dataHash = await traceEthService.verifySignature(eventId, signature);
-        const txHash = await traceEthService.addTraceEvent(eventId, dataHash, signature);
-        const updatedTraceEvent = await tracedbService.updateTraceEvent(eventId, txHash);
-
-        res.status(201).json({
-            status: 'success',
-            data: {
-                traceEvent: updatedTraceEvent
-            }
-        });
-    } catch (error) {
-        next(error);
-    }
-}
-
-export const getGrowerTraceProducts = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const user = req.user;
-        if (!user) {
-            throw new AuthorizationError("Unauthorized access")
-        };
-        const userAddress = user.address;
-
-        const traceProducts = await tracedbService.getTraceProductsByAddress(userAddress);
-
-        res.json({
-            status: "success",
-            data: {
-                traceProducts
-            }
-        });
-    } catch (error) {
-        next(error);
-    }
-}
-
-export const getSearchTraceProduct = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const user = req.user;
-        if (!user) {
-            throw new AuthorizationError("Unauthorized access")
-        };
-        const userAddress = user.address;
-        const keyword = req.query.keyword as string;
-
-        const traceProducts = await tracedbService.searchTraceProducts(userAddress, keyword);
-
-        res.json({
-            status: "success",
-            data: {
-                traceProducts
-            }
-        });
-    } catch (error) {
-        next(error);
-    }
-}
-
-export const getLastTraceEvent = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const traceProductId = parseInt(req.params.traceProductId as string);
-
-        const lastTraceEvent = await tracedbService.getLastTraceEventByTraceProductId(traceProductId);
-
-        res.json({
-            status: "success",
-            data: {
-                lastTraceEvent
-            }
-        });
-    } catch (error) {
-        next(error)
-    }
-}
-
-export const postShippingTraceProduct = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const user = req.user;
-        if (!user) {
-            throw new AuthorizationError("Unauthorized access")
-        };
-        const userAddress = user.address;
-        
-        const traceProductId = Number(req.params.traceProductId);
-        if (!traceProductId) {
-            throw new InvariantError("Invalid traceProductId format");
-        }
-
-        await tracedbService.validateSupplyChainStep(traceProductId, "SHIPPING");
-        const traceEvent = await tracedbService.createTraceEvent(traceProductId, userAddress, "SHIPPING");
+        // Create Shipping Event
+        await tracedbService.validateTraceEventSequence(payload, "SHIPPING");
+        const traceEvent = await tracedbService.createTraceEvent(userAddress, payload, "SHIPPING");
 
         res.status(201).json({
             status: "success",
@@ -152,21 +153,21 @@ export const postShippingTraceProduct = async (req: Request, res: Response, next
     }
 }
 
-export const postReceivingTraceProduct = async (req: Request, res: Response, next: NextFunction) => {
+export const postCreateReceivingEventHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
+        // Get User Address
         const user = req.user;
         if (!user) {
-            throw new AuthorizationError("Unauthorized access")
-        };
-        const userAddress = user.address;
-        
-        const traceProductId = Number(req.params.traceProductId);
-        if (!traceProductId) {
-            throw new InvariantError("Invalid traceProductId format");
+            throw new AuthorizationError("Unauthorized access");
         }
+        const userAddress = user.address;
 
-        await tracedbService.validateSupplyChainStep(traceProductId, "RECEIVING");
-        const traceEvent = await tracedbService.createTraceEvent(traceProductId, userAddress, "RECEIVING");
+        const payload = req.body;
+        TraceValidator.validateCreateGeneralEventPayloadSchema(payload);
+
+        // Create Shipping Event
+        await tracedbService.validateTraceEventSequence(payload, "RECEIVING");
+        const traceEvent = await tracedbService.createTraceEvent(userAddress, payload, "RECEIVING");
 
         res.status(201).json({
             status: "success",
@@ -179,15 +180,67 @@ export const postReceivingTraceProduct = async (req: Request, res: Response, nex
     }
 }
 
-export const getVerifyTraceEvent = async (req: Request, res: Response, next: NextFunction) => {
+export const postCreateSellingEventHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const eventId = Number(req.params.eventId);
-        if (!eventId) {
-            throw new InvariantError("Invalid eventId format");
+        // Get User Address
+        const user = req.user;
+        if (!user) {
+            throw new AuthorizationError("Unauthorized access");
         }
+        const userAddress = user.address;
 
-        const dataHashDB = await tracedbService.computeTraceEventHash(eventId);
-        const traceEventEth = await traceEthService.getTraceEventById(eventId);
+        // Validate Payload
+        const payload = req.body;
+        TraceValidator.validateCreateGeneralEventPayloadSchema(payload);
+
+        // Create Selling Event
+        await tracedbService.validateTraceEventSequence(payload, "SELLING");
+        const traceEvent = await tracedbService.createTraceEvent(userAddress, payload, "SELLING");
+
+        res.status(201).json({
+            status: "success",
+            data: {
+                traceEvent
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const postSubmitTraceEvent = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Get Params
+        const traceEventId = req.params.id as string;
+
+        // Validate Payload
+        const payload = req.body;
+        TraceValidator.validateSubmitTraceEventPayloadSchema(payload);
+
+        const dataHash = await tracedbService.generateDataHash(traceEventId);
+        await traceEthService.verifySignature(traceEventId, dataHash, payload);
+
+        const txHash = await traceEthService.addTraceEventToBlockchain(traceEventId, dataHash, payload);
+        const traceEvent = await tracedbService.updateTraceEvent(traceEventId, txHash);
+
+        res.status(201).json({
+            status: "success",
+            data: {
+                traceEvent
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const postVerifyTraceEventHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Get Params
+        const traceEventId = req.params.id as string;
+
+        const dataHashDB = await tracedbService.generateDataHash(traceEventId);
+        const traceEventEth = await traceEthService.getTraceEventById(traceEventId);
         const dataHashEth = traceEventEth[3];
 
         let validation = true;
@@ -206,24 +259,115 @@ export const getVerifyTraceEvent = async (req: Request, res: Response, next: Nex
     }
 }
 
-export const getTraceProductHistrory = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const traceProductId = Number(req.params.traceProductId);
-        if (!traceProductId) {
-            throw new InvariantError("Invalid traceProductId format");
-        }
+// -----------------------
+// Dashboard Handlers
+// -----------------------
 
-        const {traceProductRecord: traceProduct, productRecord: product, traceEventRecords: traceEvents} = await tracedbService.getTraceProductHistory(traceProductId);
+export const getAdminDashboardHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Get Dashboard Data
+        const totalGrowers = await tracedbService.countGrower();
+        const totalDistributors = await tracedbService.countDistributor();
+        const totalRetailers = await tracedbService.countRetailer();
+        const totalLocations = await tracedbService.countLocation();
 
         res.json({
             status: "success",
             data: {
-                traceProduct,
-                product,
-                traceEvents
+                totalGrowers,
+                totalDistributors,
+                totalRetailers,
+                totalLocations
             }
         });
     } catch (error) {
-        next(error)
+        next(error);
+    }
+}
+
+export const getGrowerDashboardHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Get User Address
+        const user = req.user;
+        if (!user) {
+            throw new AuthorizationError("Unauthorized access");
+        }
+        const userAddress = user.address;
+
+        // Get Dashboard Data
+        const totalTraceProducts = await tracedbService.countTraceProduct(userAddress);
+        const totalHarvestingEvents = await tracedbService.countTraceEventActivity(userAddress, "HARVESTING");
+        const totalShippingEvents = await tracedbService.countTraceEventActivity(userAddress, "SHIPPING");
+        const totalSignedEvents = await tracedbService.countSignedEvent(userAddress);
+
+        res.json({
+            status: "success",
+            data: {
+                totalTraceProducts,
+                totalHarvestingEvents,
+                totalShippingEvents,
+                totalSignedEvents
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const getDistributorDashboardHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Get User Address
+        const user = req.user;
+        if (!user) {
+            throw new AuthorizationError("Unauthorized access");
+        }
+        const userAddress = user.address;
+
+        // Get Dashboard Data
+        const totalReceivingEvents = await tracedbService.countTraceEventActivity(userAddress, "RECEIVING");
+        const totalShippingEvents = await tracedbService.countTraceEventActivity(userAddress, "SHIPPING");
+        const totalSignedEvents = await tracedbService.countSignedEvent(userAddress);
+        const totalWaitingToReceiveProducts = await tracedbService.countWaitingToReceiveProduct(userAddress);
+
+        res.json({
+            status: "success",
+            data: {
+                totalReceivingEvents,
+                totalShippingEvents,
+                totalSignedEvents,
+                totalWaitingToReceiveProducts
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const getRetailerDashboardHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Get User Address
+        const user = req.user;
+        if (!user) {
+            throw new AuthorizationError("Unauthorized access");
+        }
+        const userAddress = user.address;
+
+        // Get Dashboard Data
+        const totalReceivingEvents = await tracedbService.countTraceEventActivity(userAddress, "RECEIVING");
+        const totalSellingEvents = await tracedbService.countTraceEventActivity(userAddress, "SELLING");
+        const totalSignedEvents = await tracedbService.countSignedEvent(userAddress);
+        const totalWaitingToReceiveProducts = await tracedbService.countWaitingToReceiveProduct(userAddress);
+
+        res.json({
+            status: "success",
+            data: {
+                totalReceivingEvents,
+                totalSellingEvents,
+                totalSignedEvents,
+                totalWaitingToReceiveProducts
+            }
+        });
+    } catch (error) {
+        next(error);
     }
 }

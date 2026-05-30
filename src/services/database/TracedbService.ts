@@ -1,170 +1,214 @@
-import { and, eq, ilike, like, or } from "drizzle-orm";
+import { and, eq, like, ne, desc, count } from "drizzle-orm";
+import { solidityPackedKeccak256 } from "ethers";
+import { nanoid } from "nanoid";
+
 import { db } from "../../lib/db";
-import { actors, products, traceEvents, traceProducts } from "../../lib/db/schema";
-import NotFoundError from "../../common/exceptions/NotFoundError";
-import { isAddress, solidityPackedKeccak256 } from "ethers";
+import * as schema from "../../lib/db/schema";
 import InvariantError from "../../common/exceptions/InvariantError";
-import { desc } from "drizzle-orm";
+import NotFoundError from "../../common/exceptions/NotFoundError";
+import { CreateTraceEventDTO, CreateTraceProductDTO, ListTraceProductsQueryDTO, SupplyChainActivity } from "../../common/dto";
 
 class TracedbService {
-    async createTraceProduct(gtin: string, creatorBlockchainAddress: string) {
-        if (!isAddress(creatorBlockchainAddress)) {
-            throw new InvariantError("Invalid ethereum address")
-        }
-        const productType = await db.query.products.findFirst({
-            where: eq(products.gtin, gtin)
+    // -----------------------
+    // Trace Product Methods
+    // -----------------------
+
+    async createTraceProduct(
+        address: string,
+        data: CreateTraceProductDTO
+    ) {
+        const productRecord = await db.query.products.findFirst({
+            where: eq(schema.products.gtin, data.gtin)
         });
-        if (!productType) {
-            throw new NotFoundError("Product type not found");
+        if (!productRecord) {
+            throw new NotFoundError("Product not found");
         }
-        const lotNumber = await this.generateLotNumber(gtin);
-        const traceProduct = await db.insert(traceProducts).values({
-            creatorBlockchainAddress,
-            gtin,
-            lotNumber
+
+        const id = `TRP-${nanoid(6)}`
+        const lotNumber = await this.generateLotNumber(data.gtin);
+        
+        const result = await db.insert(schema.traceProducts).values({
+            id,
+            creatorBlockchainAddress: address,
+            currentOwnerBlockchainAddress: address,
+            currentLocationGln: data.gln,
+            gtin: data.gtin,
+            quantity: data.quantity,
+            lotNumber,
+            currentActivity: "HARVESTING"
         }).returning();
 
-        return traceProduct[0];
+        return result[0];
     }
 
-    async getTraceProductsByAddress(address: string) {
+    async listTraceProducts(
+        address: string,
+        query: ListTraceProductsQueryDTO
+    ) {
+        const {
+            page = 1,
+            limit = 10,
+        } = query;
+
+        const offset = (page - 1) * limit;
+
         const traceProductRecords = await db.query.traceProducts.findMany({
-            where: eq(traceProducts.creatorBlockchainAddress, address)
+            where: eq(schema.traceProducts.creatorBlockchainAddress, address),
+            limit,
+            offset
         });
 
         return traceProductRecords;
     }
 
-    async searchTraceProducts(address: string, keyword: string) {
-        const records = await db
-            .select({
-                id: traceProducts.id,
-                gtin: traceProducts.gtin,
-                lotNumber: traceProducts.lotNumber,
-                createdAt: traceProducts.createdAt,
-
-                productName: products.name,
-                imageUrl: products.imageUrl,
-            })
-
-            .from(traceProducts)
-
-            .innerJoin(
-                products,
-                eq(traceProducts.gtin, products.gtin)
-            )
-
-            .where(
-                and(
-                    or(
-                        ilike(traceProducts.gtin, `%${keyword}%`),
-    
-                        ilike(traceProducts.lotNumber, `%${keyword}%`),
-    
-                        ilike(products.name, `%${keyword}%`)
-                    ),
-                    eq(traceProducts.creatorBlockchainAddress, address)
-                )
-            )
-
-            .orderBy(desc(traceProducts.createdAt))
-
-            .limit(5);
-
-        return records;
-    }
-
-    async getLastTraceEventByTraceProductId(traceProductId: number) {
-        const traceProduct = await db.query.traceProducts.findFirst({
-            where: eq(traceProducts.id, traceProductId)
+    async getTraceProductById(id: string) {
+        const traceProductRecord = await db.query.traceProducts.findFirst({
+            where: eq(schema.traceProducts.id, id),
+            with: {
+                product: true
+            }
         });
 
-        if (!traceProduct) {
-            throw new NotFoundError("Trace product not found");
+        if (!traceProductRecord) {
+            throw new InvariantError("Trace product not found");
+        }
+
+        return traceProductRecord;
+    }
+
+    async getTraceEventsByTraceProductId(traceProductId: string) {
+        const traceEvents = await db.query.traceEvents.findMany({
+            where: eq(schema.traceEvents.traceProductId, traceProductId),
+            orderBy: schema.traceEvents.timestamp
+        });
+
+        return traceEvents;
+    }
+
+    // ----------------------
+    // Trace Event Methods
+    // ----------------------
+
+    async createTraceEvent(
+        address: string,
+        data: CreateTraceEventDTO,
+        activity: SupplyChainActivity
+    ) {
+        const sourceLocationRecord = await db.query.locations.findFirst({
+            where: eq(schema.locations.gln, data.sourceLocationGln)
+        });
+        if (!sourceLocationRecord) {
+            throw new NotFoundError("Source location not found")
         }
         
-        const records = await db.query.traceEvents.findMany({
-            where: eq(traceEvents.traceProductId, traceProductId),
-            orderBy: desc(traceEvents.timestamp)
-        });
-
-        return records[0];
-    }
-
-    async validateSupplyChainStep(traceProductId: number, supplychainStep: string) {
-        const traceEventRecords = await db.query.traceEvents.findMany({
-            where: eq(traceEvents.traceProductId, traceProductId),
-            orderBy: desc(traceEvents.timestamp)
-        });
-        if (traceEventRecords.length === 0) {
-            throw new NotFoundError("Initial trace event not found")
-        };
-
-        const lastTraceEvent = traceEventRecords[0];
-        
-        switch (supplychainStep) {
-            case "SHIPPING":
-                if (lastTraceEvent.supplychainStep === "SHIPPING") {
-                    throw new InvariantError("Invalid supplychain step sequence")
-                }
-                break;
-                case "RECEIVING":
-                if (lastTraceEvent.supplychainStep === "RECEIVING" || lastTraceEvent.supplychainStep === "HARVESTING") {
-                    throw new InvariantError("Invalid supplychain step sequence")
-                }
-                break;
-            default:
-                throw new InvariantError("Invalid Supplychain Step")
-        }
-    }
-
-    async createTraceEvent(traceProductId: number, actorBlockchainAddress: string, supplychainStep: string) {
-        const actorRecord = await db.query.actors.findFirst({
-            where: eq(actors.blockchainAddress, actorBlockchainAddress)
-        });
-        if (!actorRecord){
-            throw new NotFoundError("Actor not found")
-        }
-        const gln = actorRecord.gln;
-
-        const productRecord = await db.query.traceProducts.findFirst({
-            where: eq(traceProducts.id, traceProductId)
-        });
-        if (!productRecord) {
-            throw new NotFoundError("Product not found")
+        if (data.destinationLocationGln) {
+            const destinationLocationRecord = await db.query.locations.findFirst({
+                where: eq(schema.locations.gln, data.destinationLocationGln)
+            });
+            if (!destinationLocationRecord) {
+                throw new NotFoundError("Destination location not found")
+            }
         }
 
-        const traceEvent = await db.insert(traceEvents).values({
-            traceProductId,
-            actorBlockchainAddress,
-            gln,
-            supplychainStep,
+        const traceProductRecord = await db.query.traceProducts.findFirst({
+            where: eq(schema.traceProducts.id, data.traceProductId)
+        });
+        if (!traceProductRecord) {
+            throw new NotFoundError("Trace product not found")
+        }
+
+        const id = `TRE-${nanoid(6)}`;
+
+        const result = await db.insert(schema.traceEvents).values({
+            id,
+            traceProductId: data.traceProductId,
+            actorBlockchainAddress: address,
+            sourceLocationGln: data.sourceLocationGln,
+            destinationLocationGln: data.destinationLocationGln,
+            supplyChainActivity: activity,
         }).returning();
 
-        return traceEvent[0];
+        return result[0]
+    }
+
+    async validateTraceEventSequence(
+        data: CreateTraceEventDTO,
+        activity: SupplyChainActivity,
+    ) {
+        const lastTraceEvent = await this.getLastTraceEvent(data.traceProductId);
+
+        switch (activity) {
+            case "HARVESTING":
+                if (lastTraceEvent) {
+                    throw new InvariantError("Invalid supply chain step sequence");
+                }
+                break;
+        
+            case "SHIPPING":
+                if (lastTraceEvent.supplyChainActivity === "SHIPPING" || lastTraceEvent.supplyChainActivity === "SELLING") {
+                    throw new InvariantError("Invalid supply chain step sequence");
+                }
+                if (data.sourceLocationGln !== lastTraceEvent.sourceLocationGln) {
+                    throw new InvariantError("Source GLN must be the same as last event source GLN")
+                }
+                if (!data.destinationLocationGln) {
+                    throw new InvariantError("Destination GLN of shipping event cannot be empty")
+                }
+                if (data.sourceLocationGln === data.destinationLocationGln) {
+                    throw new InvariantError("Source location and destination location must be different")
+                }
+                break;
+        
+            case "RECEIVING":
+                if (lastTraceEvent.supplyChainActivity !== "SHIPPING") {
+                    throw new InvariantError("Invalid supply chain step sequence");
+                }
+                if (data.sourceLocationGln !== lastTraceEvent.destinationLocationGln) {
+                    throw new InvariantError("Invalid location of receiving destination");
+                }
+                break;
+        
+            case "SELLING":
+                if (lastTraceEvent.supplyChainActivity !== "RECEIVING") {
+                    throw new InvariantError("Invalid supply chain step sequence");
+                }
+                break;
+        
+            default:
+                break;
+        }
     }
 
     async updateTraceEvent(
-        eventId: number,
+        traceEventId: string,
         txHash: string
     ) {
         const traceEvent = await db.query.traceEvents.findFirst({
-            where: eq(traceEvents.id, eventId)
+            where: eq(schema.traceEvents.id, traceEventId)
         });
         if (!traceEvent) {
             throw new NotFoundError("Trace event not found");
         }
-        const updatedTraceEvent = await db.update(traceEvents).set({
+        const updatedTraceEvent = await db.update(schema.traceEvents).set({
             txHash,
-            onChainStatus: "VERIFIED"
-        }).where(eq(traceEvents.id, eventId)).returning();
+            validationStatus: "VALID"
+        }).where(eq(schema.traceEvents.id, traceEventId)).returning();
 
         return updatedTraceEvent[0];
     }
 
-    async computeTraceEventHash(eventId: number) {
+    async countGrower() {
+        const growerCount = await db.select({
+            total: count()
+        }).from(schema.actors).where(eq(schema.actors.role, "GROWER"));
+        const totalGrowers = growerCount[0].total;
+
+        return totalGrowers;
+    }
+
+    async generateDataHash(traceEventId: string) {
         const traceEvent = await db.query.traceEvents.findFirst({
-            where: eq(traceEvents.id, eventId)
+            where: eq(schema.traceEvents.id, traceEventId)
         });
         if (!traceEvent) {
             throw new NotFoundError("Trace event not found");
@@ -175,38 +219,112 @@ class TracedbService {
                 ? traceEvent.timestamp
                 : traceEvent.timestamp.toISOString();
         const dataHash = solidityPackedKeccak256(
-            ["uint256", "uint256", "address", "string", "string", "string"],
+            ["string", "address", "string", "string", "string", "string"],
             [
-                traceEvent.id,
                 traceEvent.traceProductId,
                 traceEvent.actorBlockchainAddress,
-                traceEvent.gln,
-                traceEvent.supplychainStep,
+                traceEvent.sourceLocationGln,
+                traceEvent.destinationLocationGln ?? "",
+                traceEvent.supplyChainActivity,
                 timestamp
             ]
         );
 
-        return dataHash;
+        return dataHash
     }
 
-    async getTraceProductHistory(traceProductId: number) {
+    async countDistributor() {
+        const distributorCount = await db.select({
+            total: count()
+        }).from(schema.actors).where(eq(schema.actors.role, "DISTRIBUTOR"));
+        const totalDistributors = distributorCount[0].total;
+
+        return totalDistributors;
+    }
+
+    async countRetailer() {
+        const retailerCount = await db.select({
+            total: count()
+        }).from(schema.actors).where(eq(schema.actors.role, "RETAILER"));
+        const totalRetailers = retailerCount[0].total;
+
+        return totalRetailers;
+    }
+
+    async countLocation() {
+        const locationCount = await db.select({
+            total: count()
+        }).from(schema.locations);
+        const totalLocations = locationCount[0].total;
+
+        return totalLocations;
+    }
+
+    async countTraceProduct(address: string) {
+        const traceProductCount = await db.select({
+            total: count()
+        }).from(schema.traceProducts).where(eq(schema.traceProducts.creatorBlockchainAddress, address));
+        const totalTraceProducts = traceProductCount[0].total;
+
+        return totalTraceProducts
+    }
+
+    async countTraceEventActivity(
+        address: string,
+        activity: SupplyChainActivity
+    ) {
+        const traceEventCount = await db.select({
+            total: count()
+        }).from(schema.traceEvents).where(and(
+            eq(schema.traceEvents.actorBlockchainAddress, address),
+            eq(schema.traceEvents.supplyChainActivity, activity)
+        ));
+        const totalTraceEvents = traceEventCount[0].total;
+
+        return totalTraceEvents;
+    }
+
+    async countSignedEvent(address: string) {
+        const signedEventCount = await db.select({
+            total: count()
+        }).from(schema.traceEvents).where(and(
+            eq(schema.traceEvents.actorBlockchainAddress, address),
+            ne(schema.traceEvents.validationStatus, "PENDING")
+        ));
+        const totalSignedEvent = signedEventCount[0].total;
+
+        return totalSignedEvent;
+    }
+
+    async countWaitingToReceiveProduct(address: string) {
+        const waitingToReceiveProductCount = await db.select({
+            total: count()
+        }).from(schema.traceProducts).innerJoin(
+            schema.actorLocations,
+            eq(schema.traceProducts.currentLocationGln, schema.actorLocations.locationGln)
+        ).where(and(
+            eq(schema.traceProducts.currentActivity, "SHIPPING"),
+            eq(schema.actorLocations.actorBlockchainAddress, address)
+        ));
+        const totalWaitingToReceiveProduct = waitingToReceiveProductCount[0].total;
+
+        return totalWaitingToReceiveProduct;
+    }
+
+    async getLastTraceEvent(traceProductId: string) {
         const traceProductRecord = await db.query.traceProducts.findFirst({
-            where: eq(traceProducts.id, traceProductId)
+            where: eq(schema.traceProducts.id, traceProductId)
         });
         if (!traceProductRecord) {
-            throw new NotFoundError("Trace product not found")
-        };
-
-        const productRecord = await db.query.products.findFirst({
-            where: eq(products.gtin, traceProductRecord.gtin)
-        });
-
+            throw new NotFoundError("Trace product not found");
+        }
+        
         const traceEventRecords = await db.query.traceEvents.findMany({
-            where: eq(traceEvents.traceProductId, traceProductId),
-            orderBy: traceEvents.timestamp
+            where: eq(schema.traceEvents.traceProductId, traceProductId),
+            orderBy: desc(schema.traceEvents.timestamp)
         });
 
-        return {traceProductRecord, productRecord, traceEventRecords};
+        return traceEventRecords[0];
     }
 
     async generateLotNumber(gtin: string) {
@@ -214,8 +332,8 @@ class TracedbService {
 
         const lastLot = await db.query.traceProducts.findFirst({
             where: and(
-                eq(traceProducts.gtin, gtin),
-                like(traceProducts.lotNumber, `${today}%`)
+                eq(schema.traceProducts.gtin, gtin),
+                like(schema.traceProducts.lotNumber, `${today}%`)
             ),
             orderBy: (traceProducts, { desc }) => [desc(traceProducts.lotNumber)]
         });

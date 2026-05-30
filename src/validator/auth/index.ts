@@ -1,5 +1,5 @@
-import InvariantError from "../../common/exceptions/InvariantError";
 import * as schema from "./schema";
+import InvariantError from "../../common/exceptions/InvariantError";
 
 const AuthValidator = {
     validateVerifySignaturePayload: async (payload: unknown) => {

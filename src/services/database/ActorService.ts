@@ -1,38 +1,25 @@
-import { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { and, eq, ilike } from "drizzle-orm";
 
-import InvariantError from "../../common/exceptions/InvariantError";
-import * as schema from "../../lib/db/schema";
-import { eq } from "drizzle-orm";
 import { db } from "../../lib/db";
+import * as schema from "../../lib/db/schema";
+import InvariantError from "../../common/exceptions/InvariantError";
 import NotFoundError from "../../common/exceptions/NotFoundError";
+import { ListActorsQueryDTO, CreateActorDTO, EditActorDTO } from "../../common/dto";
 
-type DB = NodePgDatabase<typeof schema>;
-
-class ActordbService {
-    async addActor(
-        blockchainAddress: string,
-        gln: string,
-        role: string,
-        name: string,
-        conn: DB
-    ) {
-        const lowerCaseBlockchainAddress = blockchainAddress.toLowerCase();
-        
-        const exist = await conn.query.actors.findFirst({
-            where: eq(schema.actors.blockchainAddress, lowerCaseBlockchainAddress)
+class ActorService {
+    async createActor(data: CreateActorDTO) {
+        const exist = await db.query.actors.findFirst({
+            where: eq(schema.actors.blockchainAddress, data.blockchainAddress)
         });
-        
         if (exist) {
             throw new InvariantError("User is already registered");
         }
 
-        const result = await conn.insert(schema.actors).values({
-            blockchainAddress: lowerCaseBlockchainAddress,
-            gln: gln,
-            role: role,
-            name: name
+        const result = await db.insert(schema.actors).values({
+            blockchainAddress: data.blockchainAddress,
+            name: data.name,
+            role: data.role
         }).returning();
-
         if (!result) {
             throw new InvariantError("Failed to add actor");
         }
@@ -40,23 +27,66 @@ class ActordbService {
         return result[0];
     }
 
-    async getAllActors() {
-        const actors = await db.query.actors.findMany();
-        return actors;
-    }
+    async listActors(query: ListActorsQueryDTO) {
+        const {
+            page = 1,
+            limit = 10,
+            role,
+            search
+        } = query;
 
-    async deleteActorByAddress(address: string) {
-        const lowerCaseAddress = address.toLowerCase();
-        const actor = await db.query.actors.findFirst({
-            where: eq(schema.actors.blockchainAddress, lowerCaseAddress)
+        const offset = (page - 1) * limit;
+
+        const conditions = [];
+
+        if (role) {
+            conditions.push(eq(schema.actors.role, role));
+        }
+
+        if (search) {
+            conditions.push(
+                ilike(schema.actors.name, `%${search}%`)
+            );
+        }
+
+        const actorRecords = await db.query.actors.findMany({
+            where: conditions.length > 0
+                ? and(...conditions)
+                : undefined,
+            limit,
+            offset
         });
 
-        if (!actor) {
+        return actorRecords;
+    }
+
+    async getActorByBlockchainAddress(address: string) {
+        const actorRecord = await db.query.actors.findFirst({
+            where: eq(schema.actors.blockchainAddress, address)
+        });
+        if (!actorRecord) {
             throw new NotFoundError("Actor not found");
         }
 
-        await db.delete(schema.actors).where(eq(schema.actors.blockchainAddress, lowerCaseAddress));
+        return actorRecord;
+    }
+
+    async editActorByBlockchainAddress(
+        address: string,
+        data: EditActorDTO
+    ) {
+        const actorRecord = await db.query.actors.findFirst({
+            where: eq(schema.actors.blockchainAddress, address)
+        });
+        if (!actorRecord) {
+            throw new NotFoundError("Actor not found");
+        }
+
+        await db.update(schema.actors).set({
+            name: data.name,
+            role: data.role
+        });
     }
 }
 
-export default ActordbService;
+export default ActorService;

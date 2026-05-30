@@ -1,11 +1,12 @@
-import { z } from 'zod';
+import { z } from "zod";
 
-export const ActorPayloadSchema = z.object({
+export const CreateActorPayloadSchema = z.object({
     blockchainAddress: z.string(),
-    role: z.enum(['GROWER', 'DISTRIBUTOR', 'RETAILER']),
-    actorName: z.string(),
-    location: z.object({
-        locationName: z.string(),
-        address: z.string(),
-    })
+    name: z.string(),
+    role: z.enum(["GROWER", "DISTRIBUTOR", "RETAILER"]),
+});
+
+export const EditActorPayloadSchema = z.object({
+    name: z.string(),
+    role: z.enum(["GROWER", "DISTRIBUTOR", "RETAILER"]),
 });

@@ -1,31 +1,22 @@
 import { type Request, type Response, type NextFunction } from "express";
 
-import ActordbService from "../../services/database/ActorService";
-import LocationService from "../../services/database/LocationService";
+import ActorService from "../../services/database/ActorService";
 import ActorValidator from "../../validator/actor";
-import { db } from "../../lib/db";
+import { ListActorsQueryDTO } from "../../common/dto";
 
-const actordbService = new ActordbService();
-const locationService = new LocationService();
+const actorService = new ActorService();
 
-export const postAddActorHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const postCreateActorHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
         // Validate Payload
         const payload = req.body;
-        ActorValidator.validateActorPayload(payload);
-        const { blockchainAddress, role, actorName, location } = payload;
-        const { locationName, address } = location;
+        ActorValidator.validateCreateActorPayload(payload);
 
-        // Add Actor and Location
-        const gln = await locationService.generateGln();
-        let actor
-        await db.transaction(async (tx) => {
-            await locationService.addLocation(gln, locationName, address, role, tx);
-            actor = await actordbService.addActor(blockchainAddress, gln, role, actorName, tx);
-        })
+        // Add Actor
+        const actor = await actorService.createActor(payload);
 
         res.status(201).json({
-            status: 'success',
+            status: "success",
             data: {
                 actor
             }
@@ -35,16 +26,65 @@ export const postAddActorHandler = async (req: Request, res: Response, next: Nex
     }
 }
 
-export const getAllActorsHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const getListActorsHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const actors = await actordbService.getAllActors();
+        // Get Query
+        const query: ListActorsQueryDTO = {
+            page: Number(req.query.page) || 1,
+            limit: Number(req.query.limit) || 10,
+            role: req.query.role as | "GROWER" | "DISTRIBUTOR" | "RETAILER" | undefined,
+            search: req.query.search as string | undefined
+        };
+
+        // List Actors
+        const actors = await actorService.listActors(query);
 
         res.json({
-            status: 'success',
+            status: "success",
             data: {
                 actors
             }
         })
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const getActorByBlockchainAddress = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Get Params
+        const blockchainAddress = req.params.blockchainAddress as string;
+
+        // Get Actor
+        const actor = await actorService.getActorByBlockchainAddress(blockchainAddress);
+
+        res.json({
+            status: "success",
+            data: {
+                actor
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const putEditActorByBlockchainAddress = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Get Params
+        const blockchainAddress = req.params.blockchainAddress as string;
+
+        // Validate Payload
+        const payload = req.body;
+        ActorValidator.validateEditActorPayload(payload);
+
+        // Edit Actor
+        await actorService.editActorByBlockchainAddress(blockchainAddress, payload);
+
+        res.json({
+            status: "success",
+            message: "Actor updated successfully"
+        });
     } catch (error) {
         next(error);
     }

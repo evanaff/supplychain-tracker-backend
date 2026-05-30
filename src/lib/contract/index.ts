@@ -1,5 +1,5 @@
-import config from "../../common/config";
 import { ethers } from "ethers";
+import config from "../../common/config";
 import ProductTrackerArtifact from "../../../artifacts/contracts/ProductTracker.sol/ProductTracker.json";
 
 export const getContract = () => {

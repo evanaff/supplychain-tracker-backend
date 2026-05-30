@@ -1,9 +1,33 @@
-import InvariantError from "../../common/exceptions/InvariantError";
 import * as schema from "./schema";
+import InvariantError from "../../common/exceptions/InvariantError";
 
-const TraceProductValidator = {    
-    validateInsertProductSchema: async (payload: unknown) => {
-        const validationResult = schema.InsertTraceProductPayloadSchema.safeParse(payload);
+const TraceValidator = {    
+    validateCreateTraceProductPayloadSchema: async (payload: unknown) => {
+        const validationResult = schema.CreateTraceProductPayloadSchema.safeParse(payload);
+        if (!validationResult.success) {
+            const errorMessage = validationResult.error.issues[0].path + ', ' + validationResult.error.issues[0].message;
+            throw new InvariantError(errorMessage);
+        }
+    },
+    
+    validateCreateGeneralEventPayloadSchema: async (payload: unknown) => {
+        const validationResult = schema.CreateGeneralEventPayloadSchema.safeParse(payload);
+        if (!validationResult.success) {
+            const errorMessage = validationResult.error.issues[0].path + ', ' + validationResult.error.issues[0].message;
+            throw new InvariantError(errorMessage);
+        }
+    },
+    
+    validateCreateShippingEventPayloadSchema: async (payload: unknown) => {
+        const validationResult = schema.CreateShippingEventPayloadSchema.safeParse(payload);
+        if (!validationResult.success) {
+            const errorMessage = validationResult.error.issues[0].path + ', ' + validationResult.error.issues[0].message;
+            throw new InvariantError(errorMessage);
+        }
+    },
+
+    validateSubmitTraceEventPayloadSchema: async (payload: unknown) => {
+        const validationResult = schema.SubmitTraceEventPayloadSchema.safeParse(payload);
         if (!validationResult.success) {
             const errorMessage = validationResult.error.issues[0].path + ', ' + validationResult.error.issues[0].message;
             throw new InvariantError(errorMessage);
@@ -11,4 +35,4 @@ const TraceProductValidator = {
     },
 }
 
-export default TraceProductValidator;
+export default TraceValidator;

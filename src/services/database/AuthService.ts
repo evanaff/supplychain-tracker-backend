@@ -3,14 +3,14 @@ import { isAddress } from "ethers";
 import { SiweMessage } from "siwe";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import { eq } from "drizzle-orm";
 
 import { db } from "../../lib/db";
-import { actors, nonces, refreshTokens } from "../../lib/db/schema";
+import * as schema from "../../lib/db/schema";
 import InvariantError from "../../common/exceptions/InvariantError";
-import { eq } from "drizzle-orm";
 import NotFoundError from "../../common/exceptions/NotFoundError";
-import config from "../../common/config";
 import AuthenticationError from "../../common/exceptions/AuthenticationError";
+import config from "../../common/config";
 
 class AuthService {
     async generateNonce(address: string) {
@@ -22,8 +22,8 @@ class AuthService {
         const nonce = generateNonce();
         const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
         
-        await db.delete(nonces).where(eq(nonces.address, lowerCaseAddress));
-        const result = await db.insert(nonces).values({
+        await db.delete(schema.nonces).where(eq(schema.nonces.address, lowerCaseAddress));
+        const result = await db.insert(schema.nonces).values({
             address: lowerCaseAddress,
             nonce: nonce,
             expiresAt: expiresAt
@@ -50,10 +50,10 @@ class AuthService {
             throw new InvariantError("Invalid signature")
         }
 
-        await db.delete(nonces).where(eq(nonces.address, siweAddress));
+        await db.delete(schema.nonces).where(eq(schema.nonces.address, siweAddress));
 
         const record = await db.query.actors.findFirst({
-            where: eq(actors.blockchainAddress, siweAddress)
+            where: eq(schema.actors.blockchainAddress, siweAddress)
         });
 
         if (!record) {
@@ -77,7 +77,7 @@ class AuthService {
         );
 
         const refreshToken = crypto.randomBytes(64).toString("hex");
-        await db.insert(refreshTokens).values({
+        await db.insert(schema.refreshTokens).values({
             address: record.blockchainAddress,
             token: refreshToken
         });
@@ -95,7 +95,7 @@ class AuthService {
     
     async getNonceByAddress(address: string) {
         const record = await db.query.nonces.findFirst({
-            where: eq(nonces.address, address)
+            where: eq(schema.nonces.address, address)
         });
     
         if (!record) {
@@ -103,7 +103,7 @@ class AuthService {
         }
 
         if (record.expiresAt < new Date()) {
-            await db.delete(nonces).where(eq(nonces.address, address));
+            await db.delete(schema.nonces).where(eq(schema.nonces.address, address));
             throw new InvariantError("Nonce expired")
         }
 
@@ -112,14 +112,14 @@ class AuthService {
 
     async refreshSession(refreshToken: string) {   
         const refreshTokenRecord = await db.query.refreshTokens.findFirst({
-            where: eq(refreshTokens.token, refreshToken)
+            where: eq(schema.refreshTokens.token, refreshToken)
         });
         if (!refreshTokenRecord || refreshTokenRecord.token !== refreshToken) {
             throw new AuthenticationError("Invalid refresh token");
         }
 
         const actorRecord = await db.query.actors.findFirst({
-            where: eq(actors.blockchainAddress, refreshTokenRecord.address)
+            where: eq(schema.actors.blockchainAddress, refreshTokenRecord.address)
         });
         if (!actorRecord) {
             throw new NotFoundError("Actor not found")
@@ -142,10 +142,10 @@ class AuthService {
             }
         );
 
-        await db.delete(refreshTokens).where(eq(refreshTokens.token, refreshToken));
+        await db.delete(schema.refreshTokens).where(eq(schema.refreshTokens.token, refreshToken));
         
         const newRefreshToken = crypto.randomBytes(64).toString("hex");
-        await db.insert(refreshTokens).values({
+        await db.insert(schema.refreshTokens).values({
             address: actorRecord.blockchainAddress,
             token: newRefreshToken
         });
@@ -162,7 +162,7 @@ class AuthService {
     }
 
     async deleteRefreshToken(refreshToken: string){
-        await db.delete(refreshTokens).where(eq(refreshTokens.token, refreshToken));
+        await db.delete(schema.refreshTokens).where(eq(schema.refreshTokens.token, refreshToken));
     }
 }
 

@@ -1,9 +1,11 @@
 import { type Request, type Response, type NextFunction } from "express";
-import AuthenticationError from "../common/exceptions/AuthenticationError";
 import jwt from "jsonwebtoken";
-import config from "../common/config";
+
+import AuthenticationError from "../common/exceptions/AuthenticationError";
 import AuthorizationError from "../common/exceptions/AuthorizationError";
 import { JwtUserPayload } from "../types/express";
+import { Role } from "../common/dto";
+import config from "../common/config";
 
 export const authenticateUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -38,7 +40,7 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
     }
 }
 
-export const authorizeUser = (...authorizedRole: string[]) => {
+export const authorizeUser = (authorizedRole: Role[]) => {
     return (req: Request, res: Response, next: NextFunction) => {
         try {
             const user = req.user;

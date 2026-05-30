@@ -1,46 +1,36 @@
-import { ilike, or } from "drizzle-orm";
-import { db } from "../../lib/db";
-import { products, traceProducts } from "../../lib/db/schema";
+import { and, ilike } from "drizzle-orm";
 
+import { db } from "../../lib/db";
+import { products } from "../../lib/db/schema";
+import { ListProductsQueryDTO } from "../../common/dto";
 
 class ProductService {
-    async createProduct(name: string, imageUrl: string) {
-        const gtin = this.generateGtin();
+    async listProducts(query: ListProductsQueryDTO) {
+        const {
+            page = 1,
+            limit = 10,
+            search
+        } = query;
 
-        const product = await db.insert(products).values({
-            gtin,
-            name,
-            imageUrl
-        }).returning();
+        const offset = (page - 1) * limit;
 
-        return product[0];
-    }
+        const conditions = [];
 
-    async getAllProducts() {
-        const products = await db.query.products.findMany();
-
-        return products;
-    }
-
-    async searchProduct(keyword: string) {
-        const records = await db.query.products.findMany({
-            where: or(
-                ilike(products.gtin, `%${keyword}%`),
-                ilike(products.name, `%${keyword}%`)
+        if (search) {
+            conditions.push(
+                ilike(products.varietyName, `%${search}%`)
             )
+        }
+
+        const productRecords = await db.query.products.findMany({
+            where: conditions.length > 0
+                ? and(...conditions)
+                : undefined,
+            limit,
+            offset
         });
 
-        return records;
-    }
-
-    generateGtin() {
-        let gtin = "";
-
-        for (let i = 0; i < 13; i++) {
-            gtin += Math.floor(Math.random() * 10).toString();
-        };
-
-        return gtin
+        return productRecords;
     }
 }
 

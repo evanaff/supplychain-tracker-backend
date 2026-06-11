@@ -7,7 +7,6 @@ import {
     uniqueIndex,
     integer,
     pgEnum,
-    primaryKey,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -21,6 +20,7 @@ export const roleEnum = pgEnum("role", [
 export const supplyChainActivityEnum = pgEnum(
     "supply_chain_activity",
     [
+        "CREATED",
         "HARVESTING",
         "SHIPPING",
         "RECEIVING",
@@ -41,7 +41,11 @@ export const actors = pgTable(
     "actors",
     {
         blockchainAddress: varchar("blockchain_address", { length: 42 }).primaryKey(),
-        name: varchar("name", { length: 255 }).notNull(),
+        
+        locationGln: varchar("location_gln", { length: 13 }).notNull()
+            .references(() => locations.gln),
+        
+            name: varchar("name", { length: 255 }).notNull(),
         role: roleEnum("role").notNull(),
     },
     (table) => ({
@@ -60,33 +64,6 @@ export const locations = pgTable(
     }
 );
 
-export const actorLocations = pgTable(
-    "actor_locations",
-    {
-        actorBlockchainAddress: varchar("actor_blockchain_address", { length: 42 })
-            .notNull()
-            .references(() => actors.blockchainAddress, {
-                onDelete: "cascade",
-                onUpdate: "cascade",
-            }),
-
-        locationGln: varchar("location__gln", { length: 13 })
-            .notNull()
-            .references(() => locations.gln, {
-                onDelete: "cascade",
-                onUpdate: "cascade",
-            }),
-    },
-    (table) => ({
-        pk: primaryKey({
-            columns: [
-                table.actorBlockchainAddress,
-                table.locationGln,
-            ],
-        }),
-    })
-);
-
 export const products = pgTable(
     "products",
     {
@@ -101,39 +78,24 @@ export const traceProducts = pgTable(
     "trace_products",
     {
         id: varchar("id", { length: 50 }).primaryKey(),
-
-        gtin: varchar("gtin", { length: 13 })
-            .notNull()
+        
+        gtin: varchar("gtin", { length: 13 }).notNull()
             .references(() => products.gtin),
 
-        creatorBlockchainAddress: varchar("creator_blockchain_address", { length: 42 })
-            .notNull()
+        creatorBlockchainAddress: varchar("creator_blockchain_address", { length: 42 }).notNull()
             .references(() => actors.blockchainAddress),
 
-        currentOwnerBlockchainAddress: varchar("current_owner_blockchain_address", { length: 42 })
-            .notNull()
+        currentOwnerBlockchainAddress: varchar("current_owner_blockchain_address", { length: 42 }).notNull()
             .references(() => actors.blockchainAddress),
-
-        currentLocationGln: varchar("current_location_gln", { length: 13 })
-            .notNull()
-            .references(() => locations.gln),
 
         lotNumber: varchar("lot_number", { length: 100 }).notNull(),
         quantity: integer("quantity").notNull(),
-        currentActivity: supplyChainActivityEnum("current_activity").notNull(),
-
-        createdAt: timestamp("created_at", { withTimezone: true })
-            .defaultNow()
-            .notNull(),
-
-        updatedAt: timestamp("updated_at", { withTimezone: true })
-            .defaultNow()
-            .notNull(),
+        currentActivity: supplyChainActivityEnum("current_activity").notNull().default("CREATED"),
+        createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     },
     (table) => ({
         gtinIdx: index("idx_trace_product_gtin").on(table.gtin),
         ownerIdx: index("idx_trace_product_owner").on(table.currentOwnerBlockchainAddress),
-        locationIdx: index("idx_trace_product_location").on(table.currentLocationGln),
         currentActivityIdx: index("idx_trace_product_activity").on(table.currentActivity),
         uniqueLot: uniqueIndex("unique_gtin_lot").on(table.gtin, table.lotNumber),
     })
@@ -144,34 +106,21 @@ export const traceEvents = pgTable(
     {
         id: varchar("id", { length: 50 }).primaryKey(),
 
-        traceProductId: varchar("trace_product_id", { length: 50 })
-            .notNull()
+        traceProductId: varchar("trace_product_id", { length: 50 }).notNull()
             .references(() => traceProducts.id, {
                 onDelete: "cascade",
             }),
 
-        actorBlockchainAddress: varchar("actor_blockchain_address", { length: 42 })
-            .notNull()
+        actorBlockchainAddress: varchar("actor_blockchain_address", { length: 42 }).notNull()
             .references(() => actors.blockchainAddress),
-
-        sourceLocationGln: varchar("source_location_gln", { length: 13 })
-            .notNull()
-            .references(() => locations.gln),
 
         destinationLocationGln: varchar("destination_location_gln", { length: 13 })
             .references(() => locations.gln),
 
         supplyChainActivity: supplyChainActivityEnum("supply_chain_activity").notNull(),
-
-        timestamp: timestamp("timestamp", { withTimezone: true })
-            .defaultNow()
-            .notNull(),
-
+        timestamp: timestamp("timestamp", { withTimezone: true }).defaultNow().notNull(),
         txHash: text("tx_hash"),
-
-        validationStatus: validationStatusEnum("validation_status")
-            .default("PENDING")
-            .notNull(),
+        validationStatus: validationStatusEnum("validation_status").default("PENDING").notNull(),
     }
 );
 
@@ -196,39 +145,24 @@ export const refreshTokens = pgTable(
 
 export const actorRelations = relations(
     actors,
-    ({ many }) => ({
-        actorLocations: many(actorLocations),
-        createdTraceProducts: many(traceProducts),
-        traceEvents: many(traceEvents),
-    })
-);
-
-export const actorLocationRelations = relations(
-    actorLocations,
-    ({ one }) => ({
-        actor: one(
-            actors,
-            {
-                fields: [
-                    actorLocations.actorBlockchainAddress,
-                ],
-                references: [
-                    actors.blockchainAddress,
-                ],
-            }
-        ),
-
+    ({ one, many }) => ({
         location: one(
             locations,
             {
-                fields: [
-                    actorLocations.locationGln,
-                ],
-                references: [
-                    locations.gln,
-                ],
+                fields: [actors.locationGln],
+                references: [locations.gln],
             }
         ),
+
+        createdTraceProducts: many(traceProducts, {
+            relationName: "creator",
+        }),
+
+        ownedTraceProducts: many(traceProducts, {
+            relationName: "owner",
+        }),
+
+        traceEvents: many(traceEvents),
     })
 );
 
@@ -255,18 +189,6 @@ export const traceProductsRelations = relations(
                 ],
                 references: [
                     actors.blockchainAddress,
-                ],
-            }
-        ),
-
-        location: one(
-            locations,
-            {
-                fields: [
-                    traceProducts.currentLocationGln,
-                ],
-                references: [
-                    locations.gln,
                 ],
             }
         ),
@@ -310,18 +232,6 @@ export const traceEventsRelations = relations(
                 ],
                 references: [
                     actors.blockchainAddress,
-                ],
-            }
-        ),
-
-        sourceLocation: one(
-            locations,
-            {
-                fields: [
-                    traceEvents.sourceLocationGln,
-                ],
-                references: [
-                    locations.gln,
                 ],
             }
         ),

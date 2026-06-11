@@ -6,18 +6,18 @@ import "./SignatureValidator.sol";
 
 contract ProductTracker is AccessControl, SignatureValidator {
     struct TraceEvent {
-        uint256 traceEventId;
-        uint256 traceProductId;
+        string traceEventId;
+        string traceProductId;
         address actor;
         bytes32 dataHash;
     }
 
-    mapping(uint256 => TraceEvent) public traceEvents;
-    mapping(uint256 => uint256[]) public traceEventIds;
+    mapping(string => TraceEvent) public traceEvents;
+    mapping(string => string[]) public traceEventIds;
 
     function addTraceEvent(
-        uint256 _traceEventId,
-        uint256 _traceProductId,
+        string memory _traceEventId,
+        string memory _traceProductId,
         address _actor,
         bytes32 _dataHash,
         bytes memory _signature
@@ -43,9 +43,9 @@ contract ProductTracker is AccessControl, SignatureValidator {
     }
 
     function getProductHistory(
-        uint256 _traceProductId
+        string memory _traceProductId
     ) public view returns (TraceEvent[] memory) {
-        uint256[] memory ids = traceEventIds[_traceProductId];
+        string[] memory ids = traceEventIds[_traceProductId];
         TraceEvent[] memory result = new TraceEvent[](ids.length);
 
         for (uint i = 0; i < ids.length; i++) {
@@ -56,7 +56,7 @@ contract ProductTracker is AccessControl, SignatureValidator {
     }
 
     function getProductEvent(
-        uint256 _traceEventId
+        string memory _traceEventId
     ) public view returns (TraceEvent memory) {
         return traceEvents[_traceEventId];
     }

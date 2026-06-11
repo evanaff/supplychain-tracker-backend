@@ -1,4 +1,4 @@
-import { ethers, AbiCoder, keccak256 } from "ethers";
+import { ethers } from "ethers";
 import { eq } from "drizzle-orm";
 
 import { getContract } from "../../lib/contract";
@@ -12,7 +12,7 @@ import { SubmitTraceEventDTO } from "../../common/dto";
 class TraceEthService {
     async verifySignature(
         traceEventId: string,
-        dataHash: string,
+        messageHash: string,
         data: SubmitTraceEventDTO
     ) {
         const traceEvent = await db.query.traceEvents.findFirst({
@@ -22,23 +22,9 @@ class TraceEthService {
             throw new NotFoundError("Trace event not found");
         }
 
-        const abiCoder = AbiCoder.defaultAbiCoder();
-
-        const messageHash = keccak256(
-            abiCoder.encode(
-                ["uint256", "uint256", "address", "bytes32"],
-                [
-                    traceEvent.id, 
-                    traceEvent.traceProductId, 
-                    traceEvent.actorBlockchainAddress, 
-                    dataHash
-                ]
-            )
-        );
-
         const recoveredAddress = ethers.verifyMessage(ethers.getBytes(messageHash), data.signature);
 
-        if (recoveredAddress !== traceEvent.actorBlockchainAddress) {
+        if (recoveredAddress.toLowerCase() !== traceEvent.actorBlockchainAddress.toLowerCase()) {
             throw new AuthorizationError("Invalid signature");
         }
     }

@@ -1,24 +1,31 @@
-import { and, eq, ilike } from "drizzle-orm";
+import { and, count, eq, ilike } from "drizzle-orm";
 
 import { db } from "../../lib/db";
 import * as schema from "../../lib/db/schema";
 import InvariantError from "../../common/exceptions/InvariantError";
 import NotFoundError from "../../common/exceptions/NotFoundError";
 import { ListActorsQueryDTO, CreateActorDTO, EditActorDTO } from "../../common/dto";
+import { isAddress } from "ethers";
 
 class ActorService {
-    async createActor(data: CreateActorDTO) {
+    async createActor(payload: CreateActorDTO) {
         const exist = await db.query.actors.findFirst({
-            where: eq(schema.actors.blockchainAddress, data.blockchainAddress)
+            where: eq(schema.actors.blockchainAddress, payload.blockchainAddress)
         });
         if (exist) {
             throw new InvariantError("User is already registered");
         }
+        
+        if (!isAddress(payload.blockchainAddress)) {
+            throw new InvariantError("Invalid blockchain address")
+        }
+        const lowerCaseBlockchainAddress = payload.blockchainAddress.toLowerCase();
 
         const result = await db.insert(schema.actors).values({
-            blockchainAddress: data.blockchainAddress,
-            name: data.name,
-            role: data.role
+            blockchainAddress: lowerCaseBlockchainAddress,
+            locationGln: payload.locationGln,
+            name: payload.name,
+            role: payload.role
         }).returning();
         if (!result) {
             throw new InvariantError("Failed to add actor");
@@ -31,16 +38,16 @@ class ActorService {
         const {
             page = 1,
             limit = 10,
-            role,
-            search
+            search,
+            filter
         } = query;
 
         const offset = (page - 1) * limit;
 
         const conditions = [];
 
-        if (role) {
-            conditions.push(eq(schema.actors.role, role));
+        if (filter) {
+            conditions.push(eq(schema.actors.role, filter));
         }
 
         if (search) {
@@ -49,15 +56,32 @@ class ActorService {
             );
         }
 
+        const whereClause = conditions.length > 0
+                                ? and(...conditions)
+                                : undefined
+
         const actorRecords = await db.query.actors.findMany({
-            where: conditions.length > 0
-                ? and(...conditions)
-                : undefined,
+            where: whereClause,
             limit,
             offset
         });
 
-        return actorRecords;
+        const totalItemCount = await db.select({
+            total: count()
+        }).from(schema.actors).where(whereClause);
+        const totalItems = totalItemCount[0].total;
+
+        const totalPages = Math.ceil(totalItems/limit);
+
+        return {
+            actors: actorRecords,
+            pagination: {
+                page,
+                limit,
+                totalItems,
+                totalPages
+            }
+        }
     }
 
     async getActorByBlockchainAddress(address: string) {
@@ -73,7 +97,7 @@ class ActorService {
 
     async editActorByBlockchainAddress(
         address: string,
-        data: EditActorDTO
+        payload: EditActorDTO
     ) {
         const actorRecord = await db.query.actors.findFirst({
             where: eq(schema.actors.blockchainAddress, address)
@@ -83,8 +107,8 @@ class ActorService {
         }
 
         await db.update(schema.actors).set({
-            name: data.name,
-            role: data.role
+            name: payload.name,
+            role: payload.role
         });
     }
 }

@@ -1,4 +1,4 @@
-import { and, eq, ilike } from "drizzle-orm";
+import { and, eq, ilike, count, or, not } from "drizzle-orm";
 
 import { db } from "../../lib/db";
 import * as schema from "../../lib/db/schema";
@@ -7,15 +7,13 @@ import NotFoundError from "../../common/exceptions/NotFoundError";
 import { EditLocationDTO, ListLocationsQueryDTO, type CreateLocationDTO } from "../../common/dto";
 
 class LocationService {
-    async createLocation(data: CreateLocationDTO) {
-        const gln = this.generateGln();
-
+    async createLocation(payload: CreateLocationDTO) {
         const result = await db.insert(schema.locations).values({
-            gln,
-            name: data.name,
-            province: data.province,
-            city: data.city,
-            address: data.address,
+            gln: payload.gln,
+            name: payload.name,
+            province: payload.province,
+            city: payload.city,
+            address: payload.address,
         }).returning();
         if (!result) {
             throw new InvariantError("Failed to add location");
@@ -34,22 +32,43 @@ class LocationService {
             const offset = (page - 1) * limit;
     
             const conditions = [];
-    
             if (search) {
                 conditions.push(
-                    ilike(schema.locations.name, `%${search}%`)
+                    or(
+                        ilike(schema.locations.name, `%${search}%`),
+                        ilike(schema.locations.gln, `%${search}%`)
+                    )
                 );
             }
+
+            conditions.push(not(eq(schema.locations.gln, "0000000000000")));
+
+            const whereClause = conditions.length > 0
+                                    ? and(...conditions)
+                                    : undefined;
     
             const locationRecords = await db.query.locations.findMany({
-                where: conditions.length > 0
-                    ? and(...conditions)
-                    : undefined,
+                where: whereClause,
                 limit,
                 offset
             });
+
+            const totalItemCount = await db.select({
+                total: count()
+            }).from(schema.locations).where(whereClause);
+            const totalItems = totalItemCount[0].total;
+
+            const totalPages = Math.ceil(totalItems/limit);
     
-            return locationRecords;
+            return {
+                locations: locationRecords,
+                pagination: {
+                    page,
+                    limit,
+                    totalItems,
+                    totalPages
+                }
+            }
     }
 
     async getLocationByGln(gln: string) {
@@ -65,7 +84,7 @@ class LocationService {
 
     async editLocationByGln(
         gln: string,
-        data: EditLocationDTO
+        payload: EditLocationDTO
     ) {
         const locationRecord = await db.query.locations.findFirst({
             where: eq(schema.locations.gln, gln)
@@ -75,23 +94,11 @@ class LocationService {
         }
 
         await db.update(schema.locations).set({
-            name: data.name,
-            province: data.province,
-            city: data.city,
-            address: data.address
+            name: payload.name,
+            province: payload.province,
+            city: payload.city,
+            address: payload.address
         });
-    }
-
-    generateGln() {
-        const companyPrefix = "950";
-
-        const randomPart = Array.from({ length: 10 }, () =>
-            Math.floor(Math.random() * 10)
-        ).join("");
-
-        const gln = `${companyPrefix}${randomPart}`.slice(0, 13);
-
-        return gln;
     }
 }
 

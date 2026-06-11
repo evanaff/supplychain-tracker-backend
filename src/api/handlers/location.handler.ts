@@ -17,9 +17,11 @@ export const postCreateLocationHandler = async (req: Request, res: Response, nex
 
         res.status(201).json({
             status: "success",
-            data :
-            location
-        })
+            message: "Location created successfully",
+            data : {
+                location
+            }
+        });
     } catch (error) {
         next(error);
     }
@@ -35,12 +37,13 @@ export const getListLocationsHandler = async (req: Request, res: Response, next:
         };
 
         // List Locations
-        const locations = await locationService.listLocations(query);
+        const { locations, pagination } = await locationService.listLocations(query);
 
         res.json({
             status: "success",
             data: {
-                locations
+                locations,
+                pagination
             }
         })
     } catch (error) {

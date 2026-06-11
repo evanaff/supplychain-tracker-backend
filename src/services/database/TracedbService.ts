@@ -1,12 +1,12 @@
-import { and, eq, like, ne, desc, count } from "drizzle-orm";
-import { solidityPackedKeccak256 } from "ethers";
+import { and, eq, like, ne, desc, count, ilike, or } from "drizzle-orm";
+import { AbiCoder, keccak256, solidityPackedKeccak256 } from "ethers";
 import { nanoid } from "nanoid";
 
 import { db } from "../../lib/db";
 import * as schema from "../../lib/db/schema";
 import InvariantError from "../../common/exceptions/InvariantError";
 import NotFoundError from "../../common/exceptions/NotFoundError";
-import { CreateTraceEventDTO, CreateTraceProductDTO, ListTraceProductsQueryDTO, SupplyChainActivity } from "../../common/dto";
+import { CreateTraceEventDTO, CreateTraceProductDTO, ListTraceProductsQueryDTO, Role, SupplyChainActivity } from "../../common/dto";
 
 class TracedbService {
     // -----------------------
@@ -15,27 +15,25 @@ class TracedbService {
 
     async createTraceProduct(
         address: string,
-        data: CreateTraceProductDTO
+        payload: CreateTraceProductDTO
     ) {
         const productRecord = await db.query.products.findFirst({
-            where: eq(schema.products.gtin, data.gtin)
+            where: eq(schema.products.gtin, payload.gtin)
         });
         if (!productRecord) {
             throw new NotFoundError("Product not found");
         }
 
         const id = `TRP-${nanoid(6)}`
-        const lotNumber = await this.generateLotNumber(data.gtin);
+        const lotNumber = await this.generateLotNumber(payload.gtin);
         
         const result = await db.insert(schema.traceProducts).values({
             id,
             creatorBlockchainAddress: address,
             currentOwnerBlockchainAddress: address,
-            currentLocationGln: data.gln,
-            gtin: data.gtin,
-            quantity: data.quantity,
+            gtin: payload.gtin,
+            quantity: payload.quantity,
             lotNumber,
-            currentActivity: "HARVESTING"
         }).returning();
 
         return result[0];
@@ -43,34 +41,88 @@ class TracedbService {
 
     async listTraceProducts(
         address: string,
+        role: Role,
         query: ListTraceProductsQueryDTO
     ) {
         const {
             page = 1,
             limit = 10,
+            search,
+            filter
         } = query;
 
         const offset = (page - 1) * limit;
 
+        const conditions = [];
+
+        if (search) {
+            conditions.push(
+                or(
+                    ilike(schema.traceProducts.id, `%${search}%`),
+                    ilike(schema.traceProducts.lotNumber, `%${search}%`)
+                )
+            )
+        }
+
+        if (filter) {
+            conditions.push(eq(schema.traceProducts.currentActivity, filter));
+        }
+
+        if (role === "GROWER") {
+            conditions.push(eq(schema.traceProducts.creatorBlockchainAddress, address));
+        }
+        
+        if (role === "DISTRIBUTOR" || role === "RETAILER") {
+            conditions.push(eq(schema.traceProducts.currentOwnerBlockchainAddress, address));
+        }
+
+        const whereClause = conditions.length > 0
+                                ? and(...conditions)
+                                : undefined;
+
         const traceProductRecords = await db.query.traceProducts.findMany({
-            where: eq(schema.traceProducts.creatorBlockchainAddress, address),
+            where: whereClause,
             limit,
-            offset
+            offset,
+            with: {
+                product: true
+            },
+            orderBy: desc(schema.traceProducts.createdAt)
         });
 
-        return traceProductRecords;
+        const totalItemCount = await db.select({
+            total: count()
+        }).from(schema.traceProducts).where(whereClause);
+        const totalItems = totalItemCount[0].total;
+
+        const totalPages = Math.ceil(totalItems/limit);
+
+        return {
+            traceProducts: traceProductRecords,
+            pagination: {
+                page,
+                limit,
+                totalItems,
+                totalPages
+            }
+        }
     }
 
     async getTraceProductById(id: string) {
         const traceProductRecord = await db.query.traceProducts.findFirst({
             where: eq(schema.traceProducts.id, id),
             with: {
-                product: true
+                product: true,
+                owner: {
+                    with: {
+                        location: true
+                    }
+                }
             }
         });
 
         if (!traceProductRecord) {
-            throw new InvariantError("Trace product not found");
+            throw new NotFoundError("Trace product not found");
         }
 
         return traceProductRecord;
@@ -79,7 +131,15 @@ class TracedbService {
     async getTraceEventsByTraceProductId(traceProductId: string) {
         const traceEvents = await db.query.traceEvents.findMany({
             where: eq(schema.traceEvents.traceProductId, traceProductId),
-            orderBy: schema.traceEvents.timestamp
+            orderBy: schema.traceEvents.timestamp,
+            with: {
+                actor: {
+                    with: {
+                        location: true
+                    }
+                },
+                destinationLocation: true
+            }
         });
 
         return traceEvents;
@@ -91,19 +151,12 @@ class TracedbService {
 
     async createTraceEvent(
         address: string,
-        data: CreateTraceEventDTO,
+        payload: CreateTraceEventDTO,
         activity: SupplyChainActivity
-    ) {
-        const sourceLocationRecord = await db.query.locations.findFirst({
-            where: eq(schema.locations.gln, data.sourceLocationGln)
-        });
-        if (!sourceLocationRecord) {
-            throw new NotFoundError("Source location not found")
-        }
-        
-        if (data.destinationLocationGln) {
+    ) {        
+        if (payload.destinationLocationGln) {
             const destinationLocationRecord = await db.query.locations.findFirst({
-                where: eq(schema.locations.gln, data.destinationLocationGln)
+                where: eq(schema.locations.gln, payload.destinationLocationGln)
             });
             if (!destinationLocationRecord) {
                 throw new NotFoundError("Destination location not found")
@@ -111,7 +164,7 @@ class TracedbService {
         }
 
         const traceProductRecord = await db.query.traceProducts.findFirst({
-            where: eq(schema.traceProducts.id, data.traceProductId)
+            where: eq(schema.traceProducts.id, payload.traceProductId)
         });
         if (!traceProductRecord) {
             throw new NotFoundError("Trace product not found")
@@ -121,25 +174,51 @@ class TracedbService {
 
         const result = await db.insert(schema.traceEvents).values({
             id,
-            traceProductId: data.traceProductId,
+            traceProductId: payload.traceProductId,
             actorBlockchainAddress: address,
-            sourceLocationGln: data.sourceLocationGln,
-            destinationLocationGln: data.destinationLocationGln,
+            destinationLocationGln: payload.destinationLocationGln,
             supplyChainActivity: activity,
         }).returning();
+
+        await db.update(schema.traceProducts).set({
+            currentActivity: activity,
+            currentOwnerBlockchainAddress: address
+        }).where(eq(schema.traceProducts.id, payload.traceProductId));
 
         return result[0]
     }
 
     async validateTraceEventSequence(
-        data: CreateTraceEventDTO,
+        address: string,
+        payload: CreateTraceEventDTO,
         activity: SupplyChainActivity,
     ) {
-        const lastTraceEvent = await this.getLastTraceEvent(data.traceProductId);
+        const actorRecord = await db.query.actors.findFirst({
+            where: eq(schema.actors.blockchainAddress, address)
+        });
+        if (!actorRecord) {
+            throw new NotFoundError("Actor not found");
+        }
+        
+        const traceProduct = await db.query.traceProducts.findFirst({
+            where: eq(schema.traceProducts.id, payload.traceProductId),
+        });
+        if (!traceProduct) {
+            throw new NotFoundError("Trace product not found")
+        }
+        
+        const currentOwner = await db.query.actors.findFirst({
+            where: eq(schema.actors.blockchainAddress, traceProduct.currentOwnerBlockchainAddress),
+        });
+        if (!currentOwner) {
+            throw new NotFoundError("Actor not found");
+        }
+
+        const lastTraceEvent = await this.getLastTraceEvent(payload.traceProductId);
 
         switch (activity) {
             case "HARVESTING":
-                if (lastTraceEvent) {
+                if (traceProduct.currentActivity !== "CREATED" || lastTraceEvent) {
                     throw new InvariantError("Invalid supply chain step sequence");
                 }
                 break;
@@ -148,13 +227,16 @@ class TracedbService {
                 if (lastTraceEvent.supplyChainActivity === "SHIPPING" || lastTraceEvent.supplyChainActivity === "SELLING") {
                     throw new InvariantError("Invalid supply chain step sequence");
                 }
-                if (data.sourceLocationGln !== lastTraceEvent.sourceLocationGln) {
+                if (lastTraceEvent.validationStatus === "PENDING") {
+                    throw new InvariantError("Last event is not recorded on blockchain")
+                }
+                if (actorRecord.locationGln !== currentOwner.locationGln) {
                     throw new InvariantError("Source GLN must be the same as last event source GLN")
                 }
-                if (!data.destinationLocationGln) {
+                if (!payload.destinationLocationGln) {
                     throw new InvariantError("Destination GLN of shipping event cannot be empty")
                 }
-                if (data.sourceLocationGln === data.destinationLocationGln) {
+                if (actorRecord.locationGln === payload.destinationLocationGln) {
                     throw new InvariantError("Source location and destination location must be different")
                 }
                 break;
@@ -163,7 +245,10 @@ class TracedbService {
                 if (lastTraceEvent.supplyChainActivity !== "SHIPPING") {
                     throw new InvariantError("Invalid supply chain step sequence");
                 }
-                if (data.sourceLocationGln !== lastTraceEvent.destinationLocationGln) {
+                if (lastTraceEvent.validationStatus === "PENDING") {
+                    throw new InvariantError("Last event is not recorded on blockchain")
+                }
+                if (actorRecord.locationGln !== lastTraceEvent.destinationLocationGln) {
                     throw new InvariantError("Invalid location of receiving destination");
                 }
                 break;
@@ -172,11 +257,38 @@ class TracedbService {
                 if (lastTraceEvent.supplyChainActivity !== "RECEIVING") {
                     throw new InvariantError("Invalid supply chain step sequence");
                 }
+                if (lastTraceEvent.validationStatus === "PENDING") {
+                    throw new InvariantError("Last event is not recorded on blockchain")
+                }
                 break;
         
             default:
                 break;
         }
+    }
+
+    async getTraceEventById(id: string) {
+        const traceEventRecord = await db.query.traceEvents.findFirst({
+            where: eq(schema.traceEvents.id, id),
+            with: {
+                traceProduct: {
+                    with: {
+                        product: true
+                    }
+                },
+                actor: {
+                    with: {
+                        location: true
+                    }
+                }
+            }
+        });
+
+        if (!traceEventRecord) {
+            throw new NotFoundError("Trace event not found");
+        }
+
+        return traceEventRecord
     }
 
     async updateTraceEvent(
@@ -219,11 +331,10 @@ class TracedbService {
                 ? traceEvent.timestamp
                 : traceEvent.timestamp.toISOString();
         const dataHash = solidityPackedKeccak256(
-            ["string", "address", "string", "string", "string", "string"],
+            ["string", "address", "string", "string", "string"],
             [
                 traceEvent.traceProductId,
                 traceEvent.actorBlockchainAddress,
-                traceEvent.sourceLocationGln,
                 traceEvent.destinationLocationGln ?? "",
                 traceEvent.supplyChainActivity,
                 timestamp
@@ -231,6 +342,34 @@ class TracedbService {
         );
 
         return dataHash
+    }
+
+    async generateMessageHash(
+        traceEventId: string,
+        dataHash: string
+    ) {
+        const traceEvent = await db.query.traceEvents.findFirst({
+            where: eq(schema.traceEvents.id, traceEventId)
+        });
+        if (!traceEvent) {
+            throw new NotFoundError("Trace event not found");
+        }
+
+        const abiCoder = AbiCoder.defaultAbiCoder();
+
+        const messageHash = keccak256(
+            abiCoder.encode(
+                ["string", "string", "address", "bytes32"],
+                [
+                    traceEvent.id, 
+                    traceEvent.traceProductId, 
+                    traceEvent.actorBlockchainAddress, 
+                    dataHash
+                ]
+            )
+        );
+
+        return messageHash;
     }
 
     async countDistributor() {
@@ -300,11 +439,11 @@ class TracedbService {
         const waitingToReceiveProductCount = await db.select({
             total: count()
         }).from(schema.traceProducts).innerJoin(
-            schema.actorLocations,
-            eq(schema.traceProducts.currentLocationGln, schema.actorLocations.locationGln)
+            schema.actors,
+            eq(schema.traceProducts.currentOwnerBlockchainAddress, schema.actors.blockchainAddress)
         ).where(and(
             eq(schema.traceProducts.currentActivity, "SHIPPING"),
-            eq(schema.actorLocations.actorBlockchainAddress, address)
+            eq(schema.actors.blockchainAddress, address)
         ));
         const totalWaitingToReceiveProduct = waitingToReceiveProductCount[0].total;
 
@@ -328,24 +467,27 @@ class TracedbService {
     }
 
     async generateLotNumber(gtin: string) {
-        const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const today = new Date().toISOString().slice(0, 10);
 
         const lastLot = await db.query.traceProducts.findFirst({
             where: and(
                 eq(schema.traceProducts.gtin, gtin),
-                like(schema.traceProducts.lotNumber, `${today}%`)
+                like(schema.traceProducts.lotNumber, `%${today}%`)
             ),
             orderBy: (traceProducts, { desc }) => [desc(traceProducts.lotNumber)]
         });
+        console.log(lastLot);
 
         let sequence = 1
 
         if (lastLot) {
-            const lastSeq = parseInt(lastLot.lotNumber.split('-')[1]);
+            const lastSeq = parseInt(lastLot.lotNumber.split('-')[4]);
             sequence += lastSeq;
         }
 
-        return `${today}-${sequence}`
+        const sequenceStr = sequence.toString().padStart(3, "0");
+   
+        return `LOT-${today}-${sequenceStr}`
     }
 }
 

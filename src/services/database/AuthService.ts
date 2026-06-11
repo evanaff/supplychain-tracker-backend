@@ -17,14 +17,13 @@ class AuthService {
         if (!isAddress(address)) {
             throw new InvariantError("Invalid ethereum address")
         }
-        const lowerCaseAddress = address.toLowerCase();
         
         const nonce = generateNonce();
         const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
         
-        await db.delete(schema.nonces).where(eq(schema.nonces.address, lowerCaseAddress));
+        await db.delete(schema.nonces).where(eq(schema.nonces.address, address));
         const result = await db.insert(schema.nonces).values({
-            address: lowerCaseAddress,
+            address: address,
             nonce: nonce,
             expiresAt: expiresAt
         }).returning();

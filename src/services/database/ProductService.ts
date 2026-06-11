@@ -1,4 +1,4 @@
-import { and, ilike } from "drizzle-orm";
+import { and, count, ilike } from "drizzle-orm";
 
 import { db } from "../../lib/db";
 import { products } from "../../lib/db/schema";
@@ -22,15 +22,32 @@ class ProductService {
             )
         }
 
+        const whereClause = conditions.length > 0
+                                ? and(...conditions)
+                                : undefined;
+
         const productRecords = await db.query.products.findMany({
-            where: conditions.length > 0
-                ? and(...conditions)
-                : undefined,
+            where: whereClause,
             limit,
             offset
         });
 
-        return productRecords;
+        const totalItemCount = await db.select({
+            total: count()
+        }).from(products).where(whereClause);
+        const totalItems = totalItemCount[0].total;
+
+        const totalPages = Math.ceil(totalItems/limit);
+
+        return {
+            products: productRecords,
+            pagination: {
+                page,
+                limit,
+                totalItems,
+                totalPages
+            }
+        }
     }
 }
 

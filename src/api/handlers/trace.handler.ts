@@ -5,7 +5,7 @@ import TraceEthService from "../../services/blockchain/TraceEthService";
 import TraceValidator from "../../validator/trace";
 import AuthorizationError from "../../common/exceptions/AuthorizationError";
 import InvariantError from "../../common/exceptions/InvariantError";
-import { ListTraceProductsQueryDTO } from "../../common/dto";
+import { ListTraceProductsQueryDTO, SupplyChainActivity } from "../../common/dto";
 
 const tracedbService = new TracedbService();
 const traceEthService = new TraceEthService();
@@ -32,6 +32,7 @@ export const postCreateTraceProductHandler = async (req: Request, res: Response,
 
         res.status(201).json({
             status: "success",
+            message: "Trace product created successfully",
             data: {
                 traceProduct
             }
@@ -49,20 +50,46 @@ export const getListTraceProductsHandler = async (req: Request, res: Response, n
             throw new AuthorizationError("Unauthorized access");
         }
         const userAddress = user.address;
+        const userRole = user.role;
 
         // Get Query
         const query: ListTraceProductsQueryDTO = {
             page: Number(req.query.page) || 1,
             limit: Number(req.query.limit) || 10,
+            search: req.query.search as string | undefined,
+            filter: req.query.filter as SupplyChainActivity | undefined
         };
 
         // List Trace Products
-        const traceProducts = await tracedbService.listTraceProducts(userAddress, query);
+        const { traceProducts, pagination } = await tracedbService.listTraceProducts(userAddress, userRole, query);
 
         res.json({
             status: "success",
             data: {
-                traceProducts
+                traceProducts,
+                pagination
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const getTraceProductByIdHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Get Params
+        const id = req.params.id as string;
+        if (!id) {
+            throw new InvariantError("Trace product id is required")
+        }
+
+        // Get Trace Product
+        const traceProduct = await tracedbService.getTraceProductById(id);
+
+        res.json({
+            status: "success",
+            data: {
+                traceProduct
             }
         });
     } catch (error) {
@@ -112,11 +139,12 @@ export const postCreateHarvestingEventHandler = async (req: Request, res: Respon
         TraceValidator.validateCreateGeneralEventPayloadSchema(payload);
 
         // Create Harvesting Event
-        await tracedbService.validateTraceEventSequence(payload, "HARVESTING");
+        await tracedbService.validateTraceEventSequence(userAddress, payload, "HARVESTING");
         const traceEvent = await tracedbService.createTraceEvent(userAddress, payload, "HARVESTING");
 
         res.status(201).json({
             status: "success",
+            message: "Trace event created successfully",
             data: {
                 traceEvent
             }
@@ -139,11 +167,12 @@ export const postCreateShippingEventHandler = async (req: Request, res: Response
         TraceValidator.validateCreateShippingEventPayloadSchema(payload);
 
         // Create Shipping Event
-        await tracedbService.validateTraceEventSequence(payload, "SHIPPING");
+        await tracedbService.validateTraceEventSequence(userAddress, payload, "SHIPPING");
         const traceEvent = await tracedbService.createTraceEvent(userAddress, payload, "SHIPPING");
 
         res.status(201).json({
             status: "success",
+            message: "Trace event created successfully",
             data: {
                 traceEvent
             }
@@ -166,11 +195,12 @@ export const postCreateReceivingEventHandler = async (req: Request, res: Respons
         TraceValidator.validateCreateGeneralEventPayloadSchema(payload);
 
         // Create Shipping Event
-        await tracedbService.validateTraceEventSequence(payload, "RECEIVING");
+        await tracedbService.validateTraceEventSequence(userAddress, payload, "RECEIVING");
         const traceEvent = await tracedbService.createTraceEvent(userAddress, payload, "RECEIVING");
 
         res.status(201).json({
             status: "success",
+            message: "Trace event created successfully",
             data: {
                 traceEvent
             }
@@ -194,13 +224,34 @@ export const postCreateSellingEventHandler = async (req: Request, res: Response,
         TraceValidator.validateCreateGeneralEventPayloadSchema(payload);
 
         // Create Selling Event
-        await tracedbService.validateTraceEventSequence(payload, "SELLING");
+        await tracedbService.validateTraceEventSequence(userAddress, payload, "SELLING");
         const traceEvent = await tracedbService.createTraceEvent(userAddress, payload, "SELLING");
 
         res.status(201).json({
             status: "success",
+            message: "Trace event created successfully",
             data: {
                 traceEvent
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const getGenerateMessageHash = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Get Params
+        const traceEventId = req.params.id as string;
+
+        // Generate Message Hash
+        const dataHash = await tracedbService.generateDataHash(traceEventId);
+        const messageHash = await tracedbService.generateMessageHash(traceEventId, dataHash);
+
+        res.json({
+            status: "success",
+            data: {
+                messageHash
             }
         });
     } catch (error) {
@@ -212,18 +263,42 @@ export const postSubmitTraceEvent = async (req: Request, res: Response, next: Ne
     try {
         // Get Params
         const traceEventId = req.params.id as string;
-
+        
         // Validate Payload
         const payload = req.body;
         TraceValidator.validateSubmitTraceEventPayloadSchema(payload);
-
+        
         const dataHash = await tracedbService.generateDataHash(traceEventId);
-        await traceEthService.verifySignature(traceEventId, dataHash, payload);
-
+        const messageHash = await tracedbService.generateMessageHash(traceEventId, dataHash);
+        await traceEthService.verifySignature(traceEventId, messageHash, payload);
+        
         const txHash = await traceEthService.addTraceEventToBlockchain(traceEventId, dataHash, payload);
         const traceEvent = await tracedbService.updateTraceEvent(traceEventId, txHash);
 
         res.status(201).json({
+            status: "success",
+            message: "Trace event submitted to blockchain successfully",
+            data: {
+                traceEvent
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const getTraceEventByIdHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Get Params
+        const id = req.params.id as string;
+        if (!id) {
+            throw new InvariantError("Trace product id is required")
+        }
+
+        // Get Trace Event Data
+        const traceEvent = await tracedbService.getTraceEventById(id);
+
+        res.json({
             status: "success",
             data: {
                 traceEvent
@@ -250,6 +325,7 @@ export const postVerifyTraceEventHandler = async (req: Request, res: Response, n
 
         res.json({
             status: 'success',
+            message: "Trace event validated successfully",
             data: {
                 validation
             }

@@ -4,8 +4,9 @@ import cors from 'cors';
 import config from './common/config/index.js';
 import ClientError from './common/exceptions/ClientError.js';
 
-import actorRoutes from "./api/routes/actor.routes.js";
 import authRoutes from "./api/routes/auth.routes.js";
+import locationRoutes from "./api/routes/location.routes.js";
+import actorRoutes from "./api/routes/actor.routes.js";
 import productRoutes from "./api/routes/product.routes.js";
 import traceRoutes from "./api/routes/trace.routes.js"
 
@@ -35,6 +36,7 @@ const init = async () => {
     });
 
     app.use('/api/auth', authRoutes);
+    app.use('/api/locations', locationRoutes);
     app.use('/api/actors', actorRoutes);
     app.use('/api/products', productRoutes);
     app.use('/api/traces', traceRoutes);

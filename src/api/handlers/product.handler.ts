@@ -15,12 +15,13 @@ export const getListProducts = async (req: Request, res: Response, next: NextFun
         }
 
         // List Products
-        const products = await productService.listProducts(query);
+        const { products, pagination } = await productService.listProducts(query);
 
         res.json({
             status: "success",
             data: {
-                products
+                products,
+                pagination
             }
         });
     } catch (error) {

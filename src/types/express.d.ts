@@ -1,5 +1,5 @@
 import { JwtPayload } from "jsonwebtoken";
-import { Role } from "../common/dto";
+import { Role } from "./dataTransferObject";
 
 interface JwtUserPayload {
     address: string,

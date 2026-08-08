@@ -9,6 +9,7 @@ router.post("/trace-products", authenticateUser, authorizeUser(["GROWER"]), hand
 router.get("/trace-products", authenticateUser, handler.getListTraceProductsHandler);
 router.get("/trace-products/:id", authenticateUser, handler.getTraceProductByIdHandler);
 router.get("/trace-products/:id/history", handler.getTraceProductHistoryHandler);
+router.post("/trace-products/:id/verify", handler.postVerifyTraceProductHandler);
 
 // Trace Events
 router.post("/trace-events/harvesting", authenticateUser, authorizeUser(["GROWER"]), handler.postCreateHarvestingEventHandler);
@@ -22,8 +23,5 @@ router.post("/trace-events/:id/verify", authenticateUser, handler.postVerifyTrac
 
 // Dashboard
 router.get("/dashboard/admin", authenticateUser, authorizeUser(["ADMIN"]), handler.getAdminDashboardHandler);
-router.get("/dashboard/grower", authenticateUser, authorizeUser(["GROWER"]), handler.getGrowerDashboardHandler);
-router.get("/dashboard/distributor", authenticateUser, authorizeUser(["DISTRIBUTOR"]), handler.getDistributorDashboardHandler);
-router.get("/dashboard/retailer", authenticateUser, authorizeUser(["RETAILER"]), handler.getRetailerDashboardHandler);
 
 export default router;

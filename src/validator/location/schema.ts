@@ -6,4 +6,5 @@ export const LocationPayloadSchema = z.object({
     province: z.string().min(1),
     city: z.string().min(1),
     address: z.string().min(1),
+    allowedRole: z.enum(["GROWER", "DISTRIBUTOR", "RETAILER"])
 });

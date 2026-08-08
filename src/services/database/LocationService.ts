@@ -4,7 +4,7 @@ import { db } from "../../lib/db";
 import * as schema from "../../lib/db/schema";
 import InvariantError from "../../common/exceptions/InvariantError";
 import NotFoundError from "../../common/exceptions/NotFoundError";
-import { EditLocationDTO, ListLocationsQueryDTO, type CreateLocationDTO } from "../../common/dto";
+import { EditLocationDTO, ListLocationsQueryDTO, type CreateLocationDTO } from "../../types/dataTransferObject";
 
 class LocationService {
     async createLocation(payload: CreateLocationDTO) {
@@ -14,6 +14,7 @@ class LocationService {
             province: payload.province,
             city: payload.city,
             address: payload.address,
+            allowedRole: payload.allowedRole
         }).returning();
         if (!result) {
             throw new InvariantError("Failed to add location");
@@ -98,7 +99,7 @@ class LocationService {
             province: payload.province,
             city: payload.city,
             address: payload.address
-        });
+        }).where(eq(schema.locations.gln, locationRecord.gln));
     }
 }
 

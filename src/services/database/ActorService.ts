@@ -1,10 +1,10 @@
-import { and, count, eq, ilike } from "drizzle-orm";
+import { and, count, eq, ilike, ne } from "drizzle-orm";
 
 import { db } from "../../lib/db";
 import * as schema from "../../lib/db/schema";
 import InvariantError from "../../common/exceptions/InvariantError";
 import NotFoundError from "../../common/exceptions/NotFoundError";
-import { ListActorsQueryDTO, CreateActorDTO, EditActorDTO } from "../../common/dto";
+import { ListActorsQueryDTO, CreateActorDTO, EditActorDTO } from "../../types/dataTransferObject";
 import { isAddress } from "ethers";
 
 class ActorService {
@@ -20,6 +20,14 @@ class ActorService {
             throw new InvariantError("Invalid blockchain address")
         }
         const lowerCaseBlockchainAddress = payload.blockchainAddress.toLowerCase();
+
+        const locationRecord = await db.query.locations.findFirst({
+            where: eq(schema.locations.gln, payload.locationGln)
+        });
+
+        if (!locationRecord) {
+            throw new NotFoundError("Location not found");
+        }
 
         const result = await db.insert(schema.actors).values({
             blockchainAddress: lowerCaseBlockchainAddress,
@@ -56,6 +64,8 @@ class ActorService {
             );
         }
 
+        conditions.push(ne(schema.actors.role, "ADMIN"));
+
         const whereClause = conditions.length > 0
                                 ? and(...conditions)
                                 : undefined
@@ -63,7 +73,10 @@ class ActorService {
         const actorRecords = await db.query.actors.findMany({
             where: whereClause,
             limit,
-            offset
+            offset,
+            with: {
+                location: true
+            }
         });
 
         const totalItemCount = await db.select({
@@ -109,7 +122,7 @@ class ActorService {
         await db.update(schema.actors).set({
             name: payload.name,
             role: payload.role
-        });
+        }).where(eq(schema.actors.blockchainAddress, actorRecord.blockchainAddress));
     }
 }
 

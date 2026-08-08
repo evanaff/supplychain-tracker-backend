@@ -2,36 +2,17 @@ import { type Request, type Response, type NextFunction } from "express";
 
 import AuthService from "../../services/database/AuthService";
 import AuthValidator from "../../validator/auth";
-import InvariantError from "../../common/exceptions/InvariantError";
 import { SiweMessage } from "siwe";
 
 const authService = new AuthService();
 
-export const getGenerateNonceHandler = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        let address = req.query.address?.toString();
-        if (!address) {
-            throw new InvariantError("Address is required");
-        }
-
-        const nonce = await authService.generateNonce(address);
-        
-        res.json({
-            status: "success",
-            data: {
-                nonce
-            }
-        });
-    } catch (error) {
-        next(error);
-    }
-}
-
-export const postSiweMessageHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const postGenerateMessageHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const payload = req.body;
 
-        const { domain, address, uri, version, chainId, nonce } = payload;
+        const { domain, address, uri, version, chainId } = payload;
+
+        const nonce = await authService.generateNonce(address);
 
         const siweMessage = new SiweMessage({
             domain, 

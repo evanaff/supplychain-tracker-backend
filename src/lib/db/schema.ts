@@ -9,6 +9,7 @@ import {
     pgEnum,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+import { boolean } from "drizzle-orm/pg-core";
 
 export const roleEnum = pgEnum("role", [
     "ADMIN",
@@ -25,15 +26,6 @@ export const supplyChainActivityEnum = pgEnum(
         "SHIPPING",
         "RECEIVING",
         "SELLING",
-    ]
-);
-
-export const validationStatusEnum = pgEnum(
-    "validation_status",
-    [
-        "PENDING",
-        "VALID",
-        "INVALID",
     ]
 );
 
@@ -61,6 +53,7 @@ export const locations = pgTable(
         province: varchar("province", { length: 100 }).notNull(),
         city: varchar("city", { length: 100 }).notNull(),
         address: text("address").notNull(),
+        allowedRole: roleEnum("allowed_role").notNull()
     }
 );
 
@@ -120,7 +113,7 @@ export const traceEvents = pgTable(
         supplyChainActivity: supplyChainActivityEnum("supply_chain_activity").notNull(),
         timestamp: timestamp("timestamp", { withTimezone: true }).defaultNow().notNull(),
         txHash: text("tx_hash"),
-        validationStatus: validationStatusEnum("validation_status").default("PENDING").notNull(),
+        isRecorded: boolean("is_recorded").default(false).notNull()
     }
 );
 

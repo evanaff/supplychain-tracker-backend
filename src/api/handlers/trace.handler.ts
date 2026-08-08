@@ -5,7 +5,8 @@ import TraceEthService from "../../services/blockchain/TraceEthService";
 import TraceValidator from "../../validator/trace";
 import AuthorizationError from "../../common/exceptions/AuthorizationError";
 import InvariantError from "../../common/exceptions/InvariantError";
-import { ListTraceProductsQueryDTO, SupplyChainActivity } from "../../common/dto";
+import { ListTraceProductsQueryDTO } from "../../types/dataTransferObject";
+import { SupplyChainActivity } from "../../types/types";
 
 const tracedbService = new TracedbService();
 const traceEthService = new TraceEthService();
@@ -335,6 +336,48 @@ export const postVerifyTraceEventHandler = async (req: Request, res: Response, n
     }
 }
 
+export const postVerifyTraceProductHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Get Params
+        const traceProductId = req.params.id as string;
+        
+        const traceEvents = await tracedbService.getTraceEventsByTraceProductId(traceProductId);
+
+        let validEvents = [];
+        let invalidEvents = [];
+        let missingEvents = [];
+        
+        for (const traceEvent of traceEvents) {
+            
+            const dataHashDB = await tracedbService.generateDataHash(traceEvent.id);
+            const traceEventEth = await traceEthService.getTraceEventById(traceEvent.id);
+            const dataHashEth = traceEventEth[3];
+
+            if (!traceEvent.isRecorded || dataHashEth === "0x0000000000000000000000000000000000000000000000000000000000000000") {
+                missingEvents.push(traceEvent.id);
+                continue;
+            }
+            if (dataHashDB === dataHashEth) {
+                validEvents.push(traceEvent.id);
+                continue
+            }
+            invalidEvents.push(traceEvent.id);
+        }
+
+        res.json({
+            status: "success",
+            data: {
+                totalEvents: traceEvents.length,
+                validEvents,
+                invalidEvents,
+                missingEvents
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 // -----------------------
 // Dashboard Handlers
 // -----------------------
@@ -354,93 +397,6 @@ export const getAdminDashboardHandler = async (req: Request, res: Response, next
                 totalDistributors,
                 totalRetailers,
                 totalLocations
-            }
-        });
-    } catch (error) {
-        next(error);
-    }
-}
-
-export const getGrowerDashboardHandler = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        // Get User Address
-        const user = req.user;
-        if (!user) {
-            throw new AuthorizationError("Unauthorized access");
-        }
-        const userAddress = user.address;
-
-        // Get Dashboard Data
-        const totalTraceProducts = await tracedbService.countTraceProduct(userAddress);
-        const totalHarvestingEvents = await tracedbService.countTraceEventActivity(userAddress, "HARVESTING");
-        const totalShippingEvents = await tracedbService.countTraceEventActivity(userAddress, "SHIPPING");
-        const totalSignedEvents = await tracedbService.countSignedEvent(userAddress);
-
-        res.json({
-            status: "success",
-            data: {
-                totalTraceProducts,
-                totalHarvestingEvents,
-                totalShippingEvents,
-                totalSignedEvents
-            }
-        });
-    } catch (error) {
-        next(error);
-    }
-}
-
-export const getDistributorDashboardHandler = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        // Get User Address
-        const user = req.user;
-        if (!user) {
-            throw new AuthorizationError("Unauthorized access");
-        }
-        const userAddress = user.address;
-
-        // Get Dashboard Data
-        const totalReceivingEvents = await tracedbService.countTraceEventActivity(userAddress, "RECEIVING");
-        const totalShippingEvents = await tracedbService.countTraceEventActivity(userAddress, "SHIPPING");
-        const totalSignedEvents = await tracedbService.countSignedEvent(userAddress);
-        const totalWaitingToReceiveProducts = await tracedbService.countWaitingToReceiveProduct(userAddress);
-
-        res.json({
-            status: "success",
-            data: {
-                totalReceivingEvents,
-                totalShippingEvents,
-                totalSignedEvents,
-                totalWaitingToReceiveProducts
-            }
-        });
-    } catch (error) {
-        next(error);
-    }
-}
-
-export const getRetailerDashboardHandler = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        // Get User Address
-        const user = req.user;
-        if (!user) {
-            throw new AuthorizationError("Unauthorized access");
-        }
-        const userAddress = user.address;
-
-        // Get Dashboard Data
-        const totalReceivingEvents = await tracedbService.countTraceEventActivity(userAddress, "RECEIVING");
-        const totalSellingEvents = await tracedbService.countTraceEventActivity(userAddress, "SELLING");
-        const totalSignedEvents = await tracedbService.countSignedEvent(userAddress);
-        const totalWaitingToReceiveProducts = await tracedbService.countWaitingToReceiveProduct(userAddress);
-
-        res.json({
-            status: "success",
-            data: {
-                totalReceivingEvents,
-                totalSellingEvents,
-                totalSignedEvents,
-                totalWaitingToReceiveProducts
             }
         });
     } catch (error) {

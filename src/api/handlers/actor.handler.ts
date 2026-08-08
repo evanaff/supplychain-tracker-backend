@@ -2,7 +2,8 @@ import { type Request, type Response, type NextFunction } from "express";
 
 import ActorService from "../../services/database/ActorService";
 import ActorValidator from "../../validator/actor";
-import { ListActorsQueryDTO, Role } from "../../common/dto";
+import { ListActorsQueryDTO } from "../../types/dataTransferObject";
+import { Role } from "../../types/types";
 
 const actorService = new ActorService();
 
@@ -40,6 +41,8 @@ export const getListActorsHandler = async (req: Request, res: Response, next: Ne
         // List Actors
         const { actors, pagination } = await actorService.listActors(query);
 
+        console.log(actors);
+
         res.json({
             status: "success",
             data: {
@@ -65,27 +68,6 @@ export const getActorByBlockchainAddress = async (req: Request, res: Response, n
             data: {
                 actor
             }
-        });
-    } catch (error) {
-        next(error);
-    }
-}
-
-export const putEditActorByBlockchainAddress = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        // Get Params
-        const blockchainAddress = req.params.blockchainAddress as string;
-
-        // Validate Payload
-        const payload = req.body;
-        ActorValidator.validateEditActorPayload(payload);
-
-        // Edit Actor
-        await actorService.editActorByBlockchainAddress(blockchainAddress, payload);
-
-        res.json({
-            status: "success",
-            message: "Actor updated successfully"
         });
     } catch (error) {
         next(error);

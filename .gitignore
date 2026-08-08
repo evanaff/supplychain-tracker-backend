@@ -20,3 +20,5 @@ ignition/deployments/chain-31337
 /drizzle
 
 tree.txt
+
+src/api/api-documentation.md

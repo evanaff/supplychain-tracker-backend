@@ -1,13 +1,13 @@
 import { ethers } from "ethers";
 import { eq } from "drizzle-orm";
 
-import { getContract } from "../../lib/contract";
+import { contract } from "../../lib/contract";
 import { db } from "../../lib/db";
 import { traceEvents } from "../../lib/db/schema";
 import InvariantError from "../../common/exceptions/InvariantError";
 import NotFoundError from "../../common/exceptions/NotFoundError";
 import AuthorizationError from "../../common/exceptions/AuthorizationError";
-import { SubmitTraceEventDTO } from "../../common/dto";
+import { SubmitTraceEventDTO } from "../../types/dataTransferObject";
 
 class TraceEthService {
     async verifySignature(
@@ -41,11 +41,9 @@ class TraceEthService {
             throw new NotFoundError("Trace event not found");
         }
 
-        if (traceEvent.validationStatus !== "PENDING") {
+        if (traceEvent.isRecorded) {
             throw new InvariantError("Trace event has already been recorded")
         }
-
-        const contract = getContract();
 
         let tx
         try {
@@ -65,8 +63,6 @@ class TraceEthService {
         if (!traceEventDb) {
             throw new NotFoundError("Trace event not found");
         }
-
-        const contract = getContract();
 
         let traceEventEth
         try {

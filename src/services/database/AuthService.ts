@@ -18,12 +18,13 @@ class AuthService {
             throw new InvariantError("Invalid ethereum address")
         }
         
+        const lowerCaseAddress = address.toLowerCase();
         const nonce = generateNonce();
         const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
         
-        await db.delete(schema.nonces).where(eq(schema.nonces.address, address));
+        await db.delete(schema.nonces).where(eq(schema.nonces.address, lowerCaseAddress));
         const result = await db.insert(schema.nonces).values({
-            address: address,
+            address: lowerCaseAddress,
             nonce: nonce,
             expiresAt: expiresAt
         }).returning();
@@ -39,14 +40,14 @@ class AuthService {
         const siweAddress = siwe.address.toLowerCase();
         const nonce = await this.getNonceByAddress(siweAddress);
         
-        const result = await siwe.verify({
-            signature: signature,
-            nonce: nonce,
-            domain: config.app.domainName
-        });
-
-        if (!result.success) {
-            throw new InvariantError("Invalid signature")
+        try {
+            await siwe.verify({
+                signature: signature,
+                nonce: nonce,
+                // domain: config.app.domainName
+            });
+        } catch (error) {
+            throw new InvariantError("Failed to verify message");
         }
 
         await db.delete(schema.nonces).where(eq(schema.nonces.address, siweAddress));
@@ -89,12 +90,13 @@ class AuthService {
                 name: record.name, 
                 role: record.role 
             }
-            }
+        }
     }
     
     async getNonceByAddress(address: string) {
+        const lowerCaseAddress = address.toLowerCase();
         const record = await db.query.nonces.findFirst({
-            where: eq(schema.nonces.address, address)
+            where: eq(schema.nonces.address, lowerCaseAddress)
         });
     
         if (!record) {

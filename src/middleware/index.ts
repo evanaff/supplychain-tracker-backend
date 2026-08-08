@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import AuthenticationError from "../common/exceptions/AuthenticationError";
 import AuthorizationError from "../common/exceptions/AuthorizationError";
 import { JwtUserPayload } from "../types/express";
-import { Role } from "../common/dto";
+import { Role } from "../types/types";
 import config from "../common/config";
 
 export const authenticateUser = async (req: Request, res: Response, next: NextFunction) => {

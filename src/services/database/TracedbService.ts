@@ -6,7 +6,8 @@ import { db } from "../../lib/db";
 import * as schema from "../../lib/db/schema";
 import InvariantError from "../../common/exceptions/InvariantError";
 import NotFoundError from "../../common/exceptions/NotFoundError";
-import { CreateTraceEventDTO, CreateTraceProductDTO, ListTraceProductsQueryDTO, Role, SupplyChainActivity } from "../../common/dto";
+import { CreateTraceEventDTO, CreateTraceProductDTO, ListTraceProductsQueryDTO } from "../../types/dataTransferObject";
+import { Role, SupplyChainActivity } from "../../types/types";
 
 class TracedbService {
     // -----------------------
@@ -227,7 +228,7 @@ class TracedbService {
                 if (lastTraceEvent.supplyChainActivity === "SHIPPING" || lastTraceEvent.supplyChainActivity === "SELLING") {
                     throw new InvariantError("Invalid supply chain step sequence");
                 }
-                if (lastTraceEvent.validationStatus === "PENDING") {
+                if (!lastTraceEvent.isRecorded) {
                     throw new InvariantError("Last event is not recorded on blockchain")
                 }
                 if (actorRecord.locationGln !== currentOwner.locationGln) {
@@ -245,7 +246,7 @@ class TracedbService {
                 if (lastTraceEvent.supplyChainActivity !== "SHIPPING") {
                     throw new InvariantError("Invalid supply chain step sequence");
                 }
-                if (lastTraceEvent.validationStatus === "PENDING") {
+                if (!lastTraceEvent.isRecorded) {
                     throw new InvariantError("Last event is not recorded on blockchain")
                 }
                 if (actorRecord.locationGln !== lastTraceEvent.destinationLocationGln) {
@@ -257,7 +258,7 @@ class TracedbService {
                 if (lastTraceEvent.supplyChainActivity !== "RECEIVING") {
                     throw new InvariantError("Invalid supply chain step sequence");
                 }
-                if (lastTraceEvent.validationStatus === "PENDING") {
+                if (!lastTraceEvent.isRecorded) {
                     throw new InvariantError("Last event is not recorded on blockchain")
                 }
                 break;
@@ -303,7 +304,7 @@ class TracedbService {
         }
         const updatedTraceEvent = await db.update(schema.traceEvents).set({
             txHash,
-            validationStatus: "VALID"
+            isRecorded: true
         }).where(eq(schema.traceEvents.id, traceEventId)).returning();
 
         return updatedTraceEvent[0];
@@ -428,7 +429,7 @@ class TracedbService {
             total: count()
         }).from(schema.traceEvents).where(and(
             eq(schema.traceEvents.actorBlockchainAddress, address),
-            ne(schema.traceEvents.validationStatus, "PENDING")
+            ne(schema.traceEvents.isRecorded, false)
         ));
         const totalSignedEvent = signedEventCount[0].total;
 

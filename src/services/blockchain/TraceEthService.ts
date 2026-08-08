@@ -29,32 +29,32 @@ class TraceEthService {
         }
     }
 
-    async addTraceEventToBlockchain(
-        traceEventId: string,
-        dataHash: string,
-        data: SubmitTraceEventDTO
-    ) {
-        const traceEvent = await db.query.traceEvents.findFirst({
-            where: eq(traceEvents.id, traceEventId)
-        });
-        if (!traceEvent) {
-            throw new NotFoundError("Trace event not found");
-        }
+    // async addTraceEventToBlockchain(
+    //     traceEventId: string,
+    //     dataHash: string,
+    //     data: SubmitTraceEventDTO
+    // ) {
+    //     const traceEvent = await db.query.traceEvents.findFirst({
+    //         where: eq(traceEvents.id, traceEventId)
+    //     });
+    //     if (!traceEvent) {
+    //         throw new NotFoundError("Trace event not found");
+    //     }
 
-        if (traceEvent.isRecorded) {
-            throw new InvariantError("Trace event has already been recorded")
-        }
+    //     if (traceEvent.isRecorded) {
+    //         throw new InvariantError("Trace event has already been recorded")
+    //     }
 
-        let tx
-        try {
-            tx = await contract.addTraceEvent(traceEventId, traceEvent.traceProductId, traceEvent.actorBlockchainAddress, dataHash, data.signature);
-            tx.wait();
-        } catch (error: any) {
-            throw new InvariantError(`Blockchain transaction failed: ${error.reason}`);
-        }
+    //     let tx
+    //     try {
+    //         tx = await contract.addTraceEvent(traceEventId, dataHash, data.signature);
+    //         tx.wait();
+    //     } catch (error: any) {
+    //         throw new InvariantError(`Blockchain transaction failed: ${error.reason}`);
+    //     }
 
-        return tx.hash;
-    }
+    //     return tx.hash;
+    // }
 
     async getTraceEventById(traceEventId: string) {
         const traceEventDb = await db.query.traceEvents.findFirst({
@@ -70,6 +70,8 @@ class TraceEthService {
         } catch (error: any) {
             throw new InvariantError(`Blockchain transaction failed: ${error.reason}`);
         }
+
+        console.log(traceEventEth);
 
         return traceEventEth;
     }

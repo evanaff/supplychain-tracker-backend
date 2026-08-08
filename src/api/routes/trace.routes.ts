@@ -18,8 +18,7 @@ router.post("/trace-events/receiving", authenticateUser, authorizeUser(["DISTRIB
 router.post("/trace-events/selling", authenticateUser, authorizeUser(["RETAILER"]), handler.postCreateSellingEventHandler);
 router.get("/trace-events/:id", authenticateUser, handler.getTraceEventByIdHandler);
 router.get("/trace-events/:id/message-hash", authenticateUser, handler.getGenerateMessageHash)
-router.post("/trace-events/:id/submit", authenticateUser, handler.postSubmitTraceEvent);
-router.post("/trace-events/:id/verify", authenticateUser, handler.postVerifyTraceEventHandler);
+// router.post("/trace-events/:id/submit", authenticateUser, handler.postSubmitTraceEvent);
 
 // Dashboard
 router.get("/dashboard/admin", authenticateUser, authorizeUser(["ADMIN"]), handler.getAdminDashboardHandler);

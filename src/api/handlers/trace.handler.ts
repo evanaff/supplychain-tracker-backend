@@ -260,33 +260,33 @@ export const getGenerateMessageHash = async (req: Request, res: Response, next: 
     }
 }
 
-export const postSubmitTraceEvent = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        // Get Params
-        const traceEventId = req.params.id as string;
+// export const postSubmitTraceEvent = async (req: Request, res: Response, next: NextFunction) => {
+//     try {
+//         // Get Params
+//         const traceEventId = req.params.id as string;
         
-        // Validate Payload
-        const payload = req.body;
-        TraceValidator.validateSubmitTraceEventPayloadSchema(payload);
+//         // Validate Payload
+//         const payload = req.body;
+//         TraceValidator.validateSubmitTraceEventPayloadSchema(payload);
         
-        const dataHash = await tracedbService.generateDataHash(traceEventId);
-        const messageHash = await tracedbService.generateMessageHash(traceEventId, dataHash);
-        await traceEthService.verifySignature(traceEventId, messageHash, payload);
+//         const dataHash = await tracedbService.generateDataHash(traceEventId);
+//         const messageHash = await tracedbService.generateMessageHash(traceEventId, dataHash);
+//         await traceEthService.verifySignature(traceEventId, messageHash, payload);
         
-        const txHash = await traceEthService.addTraceEventToBlockchain(traceEventId, dataHash, payload);
-        const traceEvent = await tracedbService.updateTraceEvent(traceEventId, txHash);
+//         const txHash = await traceEthService.addTraceEventToBlockchain(traceEventId, dataHash, payload);
+//         const traceEvent = await tracedbService.updateTraceEvent(traceEventId, txHash);
 
-        res.status(201).json({
-            status: "success",
-            message: "Trace event submitted to blockchain successfully",
-            data: {
-                traceEvent
-            }
-        });
-    } catch (error) {
-        next(error);
-    }
-}
+//         res.status(201).json({
+//             status: "success",
+//             message: "Trace event submitted to blockchain successfully",
+//             data: {
+//                 traceEvent
+//             }
+//         });
+//     } catch (error) {
+//         next(error);
+//     }
+// }
 
 export const getTraceEventByIdHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -310,32 +310,6 @@ export const getTraceEventByIdHandler = async (req: Request, res: Response, next
     }
 }
 
-export const postVerifyTraceEventHandler = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        // Get Params
-        const traceEventId = req.params.id as string;
-
-        const dataHashDB = await tracedbService.generateDataHash(traceEventId);
-        const traceEventEth = await traceEthService.getTraceEventById(traceEventId);
-        const dataHashEth = traceEventEth[3];
-
-        let validation = true;
-        if (dataHashDB !== dataHashEth) {
-            validation = false
-        }
-
-        res.json({
-            status: 'success',
-            message: "Trace event validated successfully",
-            data: {
-                validation
-            }
-        });
-    } catch (error) {
-        next(error);
-    }
-}
-
 export const postVerifyTraceProductHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
         // Get Params
@@ -348,7 +322,6 @@ export const postVerifyTraceProductHandler = async (req: Request, res: Response,
         let missingEvents = [];
         
         for (const traceEvent of traceEvents) {
-            
             const dataHashDB = await tracedbService.generateDataHash(traceEvent.id);
             const traceEventEth = await traceEthService.getTraceEventById(traceEvent.id);
             const dataHashEth = traceEventEth[3];

@@ -1,6 +1,6 @@
 import { type Request, type Response, type NextFunction } from "express";
 
-import AuthService from "../../services/database/AuthService";
+import AuthService from "../../services/AuthService";
 import AuthValidator from "../../validator/auth";
 import { SiweMessage } from "siwe";
 

@@ -8,7 +8,9 @@ import authRoutes from "./api/routes/auth.routes.js";
 import locationRoutes from "./api/routes/location.routes.js";
 import actorRoutes from "./api/routes/actor.routes.js";
 import productRoutes from "./api/routes/product.routes.js";
-import traceRoutes from "./api/routes/trace.routes.js"
+import traceProductRoutes from "./api/routes/trace-product.routes.js"
+import traceEventRoutes from "./api/routes/trace-events.routes.js"
+import dashboardRoutes from "./api/routes/dashboard.routes.js"
 
 const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
     if (err instanceof ClientError) {
@@ -39,7 +41,9 @@ const init = async () => {
     app.use('/api/locations', locationRoutes);
     app.use('/api/actors', actorRoutes);
     app.use('/api/products', productRoutes);
-    app.use('/api/traces', traceRoutes);
+    app.use('/api/trace-products', traceProductRoutes);
+    app.use('/api/trace-events', traceEventRoutes);
+    app.use('/api/dashboard', dashboardRoutes);
 
     app.use(errorHandler);
 

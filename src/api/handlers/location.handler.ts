@@ -1,6 +1,6 @@
 import { type Request, type Response, type NextFunction } from "express";
 
-import LocationService from "../../services/database/LocationService";
+import LocationService from "../../services/LocationService";
 import LocationValidator from "../../validator/location";
 import { ListLocationsQueryDTO } from "../../types/dataTransferObject";
 import { Role } from "../../types/types";

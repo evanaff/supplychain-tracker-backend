@@ -1,10 +1,10 @@
 import { and, eq, ilike, count, or, not } from "drizzle-orm";
 
-import { db } from "../../lib/db";
-import * as schema from "../../lib/db/schema";
-import InvariantError from "../../common/exceptions/InvariantError";
-import NotFoundError from "../../common/exceptions/NotFoundError";
-import { EditLocationDTO, ListLocationsQueryDTO, type CreateLocationDTO } from "../../types/dataTransferObject";
+import { db } from "../lib/db";
+import * as schema from "../lib/db/schema";
+import InvariantError from "../common/exceptions/InvariantError";
+import NotFoundError from "../common/exceptions/NotFoundError";
+import { EditLocationDTO, ListLocationsQueryDTO, type CreateLocationDTO } from "../types/dataTransferObject";
 
 class LocationService {
     async createLocation(payload: CreateLocationDTO) {
@@ -100,6 +100,15 @@ class LocationService {
             city: payload.city,
             address: payload.address
         }).where(eq(schema.locations.gln, locationRecord.gln));
+    }
+
+    async countLocation() {
+        const locationCount = await db.select({
+            total: count()
+        }).from(schema.locations);
+        const totalLocations = locationCount[0].total;
+
+        return totalLocations;
     }
 }
 

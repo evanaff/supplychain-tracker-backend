@@ -1,8 +1,8 @@
 import { and, count, ilike } from "drizzle-orm";
 
-import { db } from "../../lib/db";
-import { products } from "../../lib/db/schema";
-import { ListProductsQueryDTO } from "../../types/dataTransferObject";
+import { db } from "../lib/db";
+import { products } from "../lib/db/schema";
+import { ListProductsQueryDTO } from "../types/dataTransferObject";
 
 class ProductService {
     async listProducts(query: ListProductsQueryDTO) {

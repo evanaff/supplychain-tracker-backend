@@ -1,10 +1,10 @@
 import { and, count, eq, ilike, ne } from "drizzle-orm";
 
-import { db } from "../../lib/db";
-import * as schema from "../../lib/db/schema";
-import InvariantError from "../../common/exceptions/InvariantError";
-import NotFoundError from "../../common/exceptions/NotFoundError";
-import { ListActorsQueryDTO, CreateActorDTO, EditActorDTO } from "../../types/dataTransferObject";
+import { db } from "../lib/db";
+import * as schema from "../lib/db/schema";
+import InvariantError from "../common/exceptions/InvariantError";
+import NotFoundError from "../common/exceptions/NotFoundError";
+import { ListActorsQueryDTO, CreateActorDTO, EditActorDTO } from "../types/dataTransferObject";
 import { isAddress } from "ethers";
 
 class ActorService {
@@ -123,6 +123,33 @@ class ActorService {
             name: payload.name,
             role: payload.role
         }).where(eq(schema.actors.blockchainAddress, actorRecord.blockchainAddress));
+    }
+
+    async countGrower() {
+        const growerCount = await db.select({
+            total: count()
+        }).from(schema.actors).where(eq(schema.actors.role, "GROWER"));
+        const totalGrowers = growerCount[0].total;
+
+        return totalGrowers;
+    }
+
+    async countDistributor() {
+        const distributorCount = await db.select({
+            total: count()
+        }).from(schema.actors).where(eq(schema.actors.role, "DISTRIBUTOR"));
+        const totalDistributors = distributorCount[0].total;
+
+        return totalDistributors;
+    }
+
+    async countRetailer() {
+        const retailerCount = await db.select({
+            total: count()
+        }).from(schema.actors).where(eq(schema.actors.role, "RETAILER"));
+        const totalRetailers = retailerCount[0].total;
+
+        return totalRetailers;
     }
 }
 

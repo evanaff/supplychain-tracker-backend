@@ -1,6 +1,6 @@
 import { type Request, type Response, type NextFunction } from "express";
 
-import ActorService from "../../services/database/ActorService";
+import ActorService from "../../services/ActorService";
 import ActorValidator from "../../validator/actor";
 import { ListActorsQueryDTO } from "../../types/dataTransferObject";
 import { Role } from "../../types/types";

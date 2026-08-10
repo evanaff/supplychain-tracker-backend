@@ -5,12 +5,12 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { eq } from "drizzle-orm";
 
-import { db } from "../../lib/db";
-import * as schema from "../../lib/db/schema";
-import InvariantError from "../../common/exceptions/InvariantError";
-import NotFoundError from "../../common/exceptions/NotFoundError";
-import AuthenticationError from "../../common/exceptions/AuthenticationError";
-import config from "../../common/config";
+import { db } from "../lib/db";
+import * as schema from "../lib/db/schema";
+import InvariantError from "../common/exceptions/InvariantError";
+import NotFoundError from "../common/exceptions/NotFoundError";
+import AuthenticationError from "../common/exceptions/AuthenticationError";
+import config from "../common/config";
 
 class AuthService {
     async generateNonce(address: string) {
@@ -44,7 +44,7 @@ class AuthService {
             await siwe.verify({
                 signature: signature,
                 nonce: nonce,
-                // domain: config.app.domainName
+                domain: config.app.domainName
             });
         } catch (error) {
             throw new InvariantError("Failed to verify message");
@@ -77,9 +77,12 @@ class AuthService {
         );
 
         const refreshToken = crypto.randomBytes(64).toString("hex");
+        const refreshTokenExpiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000); 
+
         await db.insert(schema.refreshTokens).values({
             address: record.blockchainAddress,
-            token: refreshToken
+            token: refreshToken,
+            expiresAt: refreshTokenExpiresAt
         });
 
         return { 
@@ -119,6 +122,12 @@ class AuthService {
             throw new AuthenticationError("Invalid refresh token");
         }
 
+        if (refreshTokenRecord.expiresAt < new Date()) {
+            await db.delete(schema.refreshTokens).where(eq(schema.refreshTokens.token, refreshToken));
+
+            throw new AuthenticationError("Refresh token expired");
+        }
+
         const actorRecord = await db.query.actors.findFirst({
             where: eq(schema.actors.blockchainAddress, refreshTokenRecord.address)
         });
@@ -146,9 +155,12 @@ class AuthService {
         await db.delete(schema.refreshTokens).where(eq(schema.refreshTokens.token, refreshToken));
         
         const newRefreshToken = crypto.randomBytes(64).toString("hex");
+        const newRefreshTokenExpiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000); 
+
         await db.insert(schema.refreshTokens).values({
             address: actorRecord.blockchainAddress,
-            token: newRefreshToken
+            token: newRefreshToken,
+            expiresAt: newRefreshTokenExpiresAt
         });
 
         return { 

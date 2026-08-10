@@ -1,6 +1,6 @@
 import { type Request, type Response, type NextFunction } from "express";
 
-import ProductService from "../../services/database/ProductService";
+import ProductService from "../../services/ProductService";
 import { ListProductsQueryDTO } from "../../types/dataTransferObject";
 
 const productService = new ProductService();

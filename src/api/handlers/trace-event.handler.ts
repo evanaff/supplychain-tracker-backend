@@ -7,6 +7,28 @@ import InvariantError from "../../common/exceptions/InvariantError";
 
 const traceEventService = new TraceEventService();
 
+export const getTraceEventByIdHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Get Params
+        const id = req.params.id as string;
+        if (!id) {
+            throw new InvariantError("Trace product id is required")
+        }
+
+        // Get Trace Event Data
+        const traceEvent = await traceEventService.getTraceEventByIdFromDatabase(id);
+
+        res.json({
+            status: "success",
+            data: {
+                traceEvent
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 export const postCreateHarvestingEventHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
         // Get User Address
@@ -121,7 +143,7 @@ export const postCreateSellingEventHandler = async (req: Request, res: Response,
     }
 }
 
-export const getGenerateMessageHash = async (req: Request, res: Response, next: NextFunction) => {
+export const getGenerateMessageHashHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
         // Get Params
         const traceEventId = req.params.id as string;
@@ -141,24 +163,42 @@ export const getGenerateMessageHash = async (req: Request, res: Response, next: 
     }
 }
 
-export const getTraceEventByIdHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const getGenerateDataHashHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
         // Get Params
-        const id = req.params.id as string;
-        if (!id) {
-            throw new InvariantError("Trace product id is required")
-        }
+        const traceEventId = req.params.id as string;
 
-        // Get Trace Event Data
-        const traceEvent = await traceEventService.getTraceEventByIdFromDatabase(id);
+        // Generate Message Hash
+        const dataHash = await traceEventService.generateDataHash(traceEventId);
 
         res.json({
             status: "success",
             data: {
-                traceEvent
+                dataHash
             }
         });
     } catch (error) {
         next(error);
+    }
+}
+
+export const postSaveTxHashHandler =  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Get Params
+        const traceEventId = req.params.id as string;
+
+        // Validate Payload
+        const payload = req.body;
+        TraceEventValidator.validateSaveTxHashPayloadSchema(payload);
+
+        // Save Tx Hash
+        await traceEventService.saveTxHash(traceEventId, payload.txHash);
+        
+        res.json({
+            status: "success",
+            message: "Tx hash saved successfully"
+        })
+    } catch (error) {
+        next(error)
     }
 }

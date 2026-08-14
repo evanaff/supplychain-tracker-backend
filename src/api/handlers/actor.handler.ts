@@ -7,22 +7,24 @@ import { Role } from "../../types/types";
 
 const actorService = new ActorService();
 
-export const postCreateActorHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const postRegisterActorHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
         // Validate Payload
         const payload = req.body;
         ActorValidator.validateCreateActorPayload(payload);
 
         // Add Actor
-        const actor = await actorService.createActor(payload);
+        const actor = await actorService.registerActorToDatabase(payload);
+        const txHash = await actorService.registerActorToBlockchain(payload.blockchainAddress);
 
         res.status(201).json({
             status: "success",
-            message: "Actor created successfully",
+            message: "Actor registered successfully",
             data: {
-                actor
+                actor,
+                txHash
             }
-        })
+        });
     } catch (error) {
         next(error);
     }
@@ -41,8 +43,6 @@ export const getListActorsHandler = async (req: Request, res: Response, next: Ne
         // List Actors
         const { actors, pagination } = await actorService.listActors(query);
 
-        console.log(actors);
-
         res.json({
             status: "success",
             data: {
@@ -55,7 +55,7 @@ export const getListActorsHandler = async (req: Request, res: Response, next: Ne
     }
 }
 
-export const getActorByBlockchainAddress = async (req: Request, res: Response, next: NextFunction) => {
+export const getActorByBlockchainAddressHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
         // Get Params
         const blockchainAddress = req.params.blockchainAddress as string;

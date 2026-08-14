@@ -10,6 +10,8 @@ router.post("/shipping", authenticateUser, authorizeUser(["GROWER", "DISTRIBUTOR
 router.post("/receiving", authenticateUser, authorizeUser(["DISTRIBUTOR", "RETAILER"]), handler.postCreateReceivingEventHandler);
 router.post("/selling", authenticateUser, authorizeUser(["RETAILER"]), handler.postCreateSellingEventHandler);
 router.get("/:id", authenticateUser, handler.getTraceEventByIdHandler);
-router.get("/:id/message-hash", authenticateUser, handler.getGenerateMessageHash)
+router.get("/:id/message-hash", authenticateUser, handler.getGenerateMessageHashHandler)
+router.get("/:id/data-hash", authenticateUser, handler.getGenerateDataHashHandler);
+router.post("/:id/save-hash", authenticateUser, handler.postSaveTxHashHandler);
 
 export default router;

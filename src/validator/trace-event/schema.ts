@@ -8,3 +8,7 @@ export const CreateShippingEventPayloadSchema = z.object({
 	traceProductId: z.string(),
 	destinationLocationGln: z.string()
 });
+
+export const SaveTxHashPayloadSchema = z.object({
+	txHash: z.string()
+});

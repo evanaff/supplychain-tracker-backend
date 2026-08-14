@@ -60,6 +60,8 @@ export const getListTraceProductsHandler = async (req: Request, res: Response, n
         // List Trace Products
         const { traceProducts, pagination } = await traceProductService.listTraceProducts(userAddress, userRole, query);
 
+        console.log(traceProducts);
+
         res.json({
             status: "success",
             data: {
@@ -122,9 +124,10 @@ export const postVerifyTraceProductHandler = async (req: Request, res: Response,
     try {
         // Get Params
         const traceProductId = req.params.id as string;
+
         
         const traceEvents = await traceEventService.getTraceEventsByTraceProductId(traceProductId);
-
+        
         let validEvents = [];
         let invalidEvents = [];
         let missingEvents = [];
@@ -132,7 +135,9 @@ export const postVerifyTraceProductHandler = async (req: Request, res: Response,
         for (const traceEvent of traceEvents) {
             const dataHashDB = await traceEventService.generateDataHash(traceEvent.id);
             const traceEventEth = await traceEventService.getTraceEventByIdFromBlockchain(traceEvent.id);
-            const dataHashEth = traceEventEth[3];
+            const dataHashEth = traceEventEth[1];
+
+            console.log(traceEventEth);
 
             if (!traceEvent.isRecorded || dataHashEth === "0x0000000000000000000000000000000000000000000000000000000000000000") {
                 missingEvents.push(traceEvent.id);

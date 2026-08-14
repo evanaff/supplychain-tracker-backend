@@ -6,27 +6,32 @@ import InvariantError from "../common/exceptions/InvariantError";
 import NotFoundError from "../common/exceptions/NotFoundError";
 import { ListActorsQueryDTO, CreateActorDTO, EditActorDTO } from "../types/dataTransferObject";
 import { isAddress } from "ethers";
+import { contract } from "../lib/contract";
 
 class ActorService {
-    async createActor(payload: CreateActorDTO) {
-        const exist = await db.query.actors.findFirst({
-            where: eq(schema.actors.blockchainAddress, payload.blockchainAddress)
-        });
-        if (exist) {
-            throw new InvariantError("User is already registered");
-        }
-        
+    async registerActorToDatabase(payload: CreateActorDTO) {
         if (!isAddress(payload.blockchainAddress)) {
             throw new InvariantError("Invalid blockchain address")
         }
+
         const lowerCaseBlockchainAddress = payload.blockchainAddress.toLowerCase();
 
+        const exist = await db.query.actors.findFirst({
+            where: eq(schema.actors.blockchainAddress, lowerCaseBlockchainAddress)
+        });
+        if (exist) {
+            throw new InvariantError("Blockchain address is already registered");
+        }
+        
         const locationRecord = await db.query.locations.findFirst({
             where: eq(schema.locations.gln, payload.locationGln)
         });
-
         if (!locationRecord) {
             throw new NotFoundError("Location not found");
+        }
+
+        if (locationRecord.allowedRole !== payload.role) {
+            throw new InvariantError("Invalid role for this location");
         }
 
         const result = await db.insert(schema.actors).values({
@@ -40,6 +45,31 @@ class ActorService {
         }
 
         return result[0];
+    }
+
+    async registerActorToBlockchain(blockchainAddress: string) {
+        const lowerCaseBlockchainAddress = blockchainAddress.toLowerCase();
+
+        const actorRecord = await db.query.actors.findFirst({
+            where: eq(schema.actors.blockchainAddress, lowerCaseBlockchainAddress)
+        });
+        if (!actorRecord) {
+            throw new NotFoundError("Actor not found")
+        }
+
+        let tx
+        try {
+            tx = await contract.addExecutor(blockchainAddress);
+            tx.wait();
+        } catch (error: any) {
+            throw new InvariantError(`Blockchain transaction failed: ${error.reason}`);
+        }
+
+        await db.update(schema.actors).set({
+            txHash: tx.hash
+        }).where(eq(schema.actors.blockchainAddress, lowerCaseBlockchainAddress));
+
+        return tx.hash;
     }
 
     async listActors(query: ListActorsQueryDTO) {

@@ -44,6 +44,13 @@ export type EditLocationDTO = {
     address: string;
 };
 
+// Products
+export type CreateProductDTO = {
+    gtin: string;
+    varietyName: string;
+    unitOfMeasure: string;
+}
+
 // Trace Products
 export type CreateTraceProductDTO = {
     gtin: string;

@@ -2,9 +2,20 @@ import { and, count, ilike } from "drizzle-orm";
 
 import { db } from "../lib/db";
 import { products } from "../lib/db/schema";
-import { ListProductsQueryDTO } from "../types/dataTransferObject";
+import { CreateProductDTO, ListProductsQueryDTO } from "../types/dataTransferObject";
 
 class ProductService {
+    async createProduct(payload: CreateProductDTO, imageUrl: string) {
+        const product = await db.insert(products).values({
+            gtin: payload.gtin,
+            varietyName: payload.varietyName,
+            unitOfMeasure: payload.unitOfMeasure,
+            imageUrl
+        }).returning();
+
+        return product[0];
+    }
+
     async listProducts(query: ListProductsQueryDTO) {
         const {
             page = 1,

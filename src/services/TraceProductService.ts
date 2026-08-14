@@ -134,7 +134,6 @@ class TraceProductService {
             ),
             orderBy: (traceProducts, { desc }) => [desc(traceProducts.lotNumber)]
         });
-        console.log(lastLot);
 
         let sequence = 1
 

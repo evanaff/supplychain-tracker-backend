@@ -9,7 +9,7 @@ import locationRoutes from "./api/routes/location.routes.js";
 import actorRoutes from "./api/routes/actor.routes.js";
 import productRoutes from "./api/routes/product.routes.js";
 import traceProductRoutes from "./api/routes/trace-product.routes.js"
-import traceEventRoutes from "./api/routes/trace-events.routes.js"
+import traceEventRoutes from "./api/routes/trace-event.routes.js"
 import dashboardRoutes from "./api/routes/dashboard.routes.js"
 
 const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
@@ -51,7 +51,7 @@ const init = async () => {
     const port = config.app.port;
 
     app.listen(port, () => {
-        console.log(`📡 Server is running at http://${host}:${port}`);
+        console.log(`Server is running at http://${host}:${port}`);
     });
 }
 

@@ -1,4 +1,4 @@
-import { and, eq, ilike, count, or, not } from "drizzle-orm";
+import { and, eq, ilike, count, or, not, ne } from "drizzle-orm";
 
 import { db } from "../lib/db";
 import * as schema from "../lib/db/schema";
@@ -105,7 +105,7 @@ class LocationService {
     async countLocation() {
         const locationCount = await db.select({
             total: count()
-        }).from(schema.locations);
+        }).from(schema.locations).where(ne(schema.locations.allowedRole, "ADMIN"));
         const totalLocations = locationCount[0].total;
 
         return totalLocations;

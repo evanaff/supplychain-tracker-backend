@@ -104,6 +104,8 @@ export const actors = pgTable(
         }).notNull(),
 
         role: roleEnum("role").notNull(),
+
+        txHash: text("tx_hash"),
     },
     (table) => ({
         roleIdx: index("idx_actor_role").on(table.role),
@@ -134,7 +136,7 @@ export const traceProducts = pgTable(
     "trace_products",
     {
         id: varchar("id", {
-            length: 50,
+            length: 15,
         }).primaryKey(),
 
         gtin: varchar("gtin", {
@@ -200,7 +202,7 @@ export const traceEvents = pgTable(
     "trace_events",
     {
         id: varchar("id", {
-            length: 50,
+            length: 15,
         }).primaryKey(),
 
         traceProductId: varchar("trace_product_id", {
@@ -296,7 +298,7 @@ export const nonces = pgTable(
 );
 
 export const refreshTokens = pgTable(
-    "refreshTokens",
+    "refresh_tokens",
     {
         address: varchar("address", {
             length: 42,

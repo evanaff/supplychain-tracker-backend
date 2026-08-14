@@ -16,6 +16,15 @@ class TraceEventService {
     // PosgreSQL / Database Methods
     // -------------------------------
 
+    async getTraceEventsByTraceProductId(traceProductId: string) {
+        const traceEvents = await db.query.traceEvents.findMany({
+            where: eq(schema.traceEvents.traceProductId, traceProductId),
+            orderBy: schema.traceEvents.timestamp,
+        });
+
+        return traceEvents;
+    }
+
     async createTraceEvent(
         address: string,
         payload: CreateTraceEventDTO,
@@ -202,24 +211,6 @@ class TraceEventService {
         return traceEventRecord
     }
 
-    async updateTraceEvent(
-        traceEventId: string,
-        txHash: string
-    ) {
-        const traceEvent = await db.query.traceEvents.findFirst({
-            where: eq(schema.traceEvents.id, traceEventId)
-        });
-        if (!traceEvent) {
-            throw new NotFoundError("Trace event not found");
-        }
-        const updatedTraceEvent = await db.update(schema.traceEvents).set({
-            txHash,
-            isRecorded: true
-        }).where(eq(schema.traceEvents.id, traceEventId)).returning();
-
-        return updatedTraceEvent[0];
-    }
-
     async generateDataHash(traceEventId: string) {
         const traceEvent = await db.query.traceEvents.findFirst({
             where: eq(schema.traceEvents.id, traceEventId)
@@ -265,7 +256,7 @@ class TraceEventService {
 
         const messageHash = keccak256(
             abiCoder.encode(
-                ["string", "string", "address", "bytes32"],
+                ["string", "address", "bytes32"],
                 [
                     traceEvent.id, 
                     traceEvent.actorJson.blockchainAddress, 
@@ -293,13 +284,18 @@ class TraceEventService {
         return traceEventRecords[0];
     }
 
-    async getTraceEventsByTraceProductId(traceProductId: string) {
-        const traceEvents = await db.query.traceEvents.findMany({
-            where: eq(schema.traceEvents.traceProductId, traceProductId),
-            orderBy: schema.traceEvents.timestamp,
+    async saveTxHash(traceEventId: string, txHash: string) {
+        const traceEventRecord = await db.query.traceEvents.findFirst({
+            where: eq(schema.traceEvents.id, traceEventId)
         });
+        if (!traceEventRecord) {
+            throw new NotFoundError("Trace event not found");
+        }
 
-        return traceEvents;
+        await db.update(schema.traceEvents).set({
+            txHash,
+            isRecorded: true
+        }).where(eq(schema.traceEvents.id, traceEventId));
     }
 
     // -------------------------------
@@ -336,12 +332,10 @@ class TraceEventService {
 
         let traceEventEth
         try {
-            traceEventEth = await contract.getProductEvent(traceEventId);
+            traceEventEth = await contract.getTraceEventById(traceEventId);
         } catch (error: any) {
             throw new InvariantError(`Blockchain transaction failed: ${error.reason}`);
         }
-
-        console.log(traceEventEth);
 
         return traceEventEth;
     }

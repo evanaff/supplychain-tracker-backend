@@ -4,7 +4,7 @@ pragma solidity ^0.8.28;
 import "./AccessControl.sol";
 import "./SignatureValidator.sol";
 
-contract ProductTracker is AccessControl, SignatureValidator {
+contract SupplyChainTracker is AccessControl, SignatureValidator {
     struct TraceEvent {
         string traceEventId;
         bytes32 dataHash;

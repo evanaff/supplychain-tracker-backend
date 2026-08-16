@@ -138,23 +138,6 @@ class ActorService {
         return actorRecord;
     }
 
-    async editActorByBlockchainAddress(
-        address: string,
-        payload: EditActorDTO
-    ) {
-        const actorRecord = await db.query.actors.findFirst({
-            where: eq(schema.actors.blockchainAddress, address)
-        });
-        if (!actorRecord) {
-            throw new NotFoundError("Actor not found");
-        }
-
-        await db.update(schema.actors).set({
-            name: payload.name,
-            role: payload.role
-        }).where(eq(schema.actors.blockchainAddress, actorRecord.blockchainAddress));
-    }
-
     async countGrower() {
         const growerCount = await db.select({
             total: count()

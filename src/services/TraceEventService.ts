@@ -6,9 +6,8 @@ import { db } from "../lib/db";
 import * as schema from "../lib/db/schema";
 import NotFoundError from "../common/exceptions/NotFoundError";
 import InvariantError from "../common/exceptions/InvariantError";
-import { CreateTraceEventDTO, SubmitTraceEventDTO } from "../types/dataTransferObject";
+import { CreateTraceEventDTO } from "../types/dataTransferObject";
 import { SupplyChainActivity } from "../types/types";
-import AuthorizationError from "../common/exceptions/AuthorizationError";
 import { contract } from "../lib/contract";
 
 class TraceEventService {
@@ -301,26 +300,6 @@ class TraceEventService {
     // -------------------------------
     // Ethereum / Blockchain Methods
     // -------------------------------
-
-    async verifySignature(
-        traceEventId: string,
-        messageHash: string,
-        data: SubmitTraceEventDTO
-    ) {
-        const traceEvent = await db.query.traceEvents.findFirst({
-            where: eq(schema.traceEvents.id, traceEventId)
-        });
-        if (!traceEvent) {
-            throw new NotFoundError("Trace event not found");
-        }
-
-        const actor = traceEvent.actorJson;
-        const recoveredAddress = ethers.verifyMessage(ethers.getBytes(messageHash), data.signature);
-
-        if (recoveredAddress.toLowerCase() !== actor.blockchainAddress.toLowerCase()) {
-            throw new AuthorizationError("Invalid signature");
-        }
-    }
 
     async getTraceEventByIdFromBlockchain(traceEventId: string) {
         const traceEventDb = await db.query.traceEvents.findFirst({

@@ -83,25 +83,6 @@ class LocationService {
         return locationRecord;
     }
 
-    async editLocationByGln(
-        gln: string,
-        payload: EditLocationDTO
-    ) {
-        const locationRecord = await db.query.locations.findFirst({
-            where: eq(schema.locations.gln, gln)
-        });
-        if (!locationRecord) {
-            throw new NotFoundError("Location not found")
-        }
-
-        await db.update(schema.locations).set({
-            name: payload.name,
-            province: payload.province,
-            city: payload.city,
-            address: payload.address
-        }).where(eq(schema.locations.gln, locationRecord.gln));
-    }
-
     async countLocation() {
         const locationCount = await db.select({
             total: count()

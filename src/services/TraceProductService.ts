@@ -5,7 +5,6 @@ import { db } from "../lib/db";
 import * as schema from "../lib/db/schema";
 import NotFoundError from "../common/exceptions/NotFoundError";
 import { CreateTraceProductDTO, ListTraceProductsQueryDTO } from "../types/dataTransferObject";
-import { Role } from "../types/types";
 
 
 class TraceProductService {

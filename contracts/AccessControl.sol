@@ -20,8 +20,14 @@ contract AccessControl {
     }
 
     function addExecutor(address _executor) public onlyAdmin {
-        require(!executors[_executor], "Executor already registered");
+        require(!executors[_executor], "Executor is already registered");
 
         executors[_executor] = true;
+    }
+
+    function removeExecutor(address _executor) public onlyAdmin {
+        require(executors[_executor], "Executor is not registered");
+
+        executors[_executor] = false;
     }
 }

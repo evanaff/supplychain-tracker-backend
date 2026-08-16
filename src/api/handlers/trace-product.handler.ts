@@ -47,7 +47,6 @@ export const getListTraceProductsHandler = async (req: Request, res: Response, n
             throw new AuthorizationError("Unauthorized access");
         }
         const userAddress = user.address;
-        const userRole = user.role;
 
         // Get Query
         const query: ListTraceProductsQueryDTO = {
@@ -58,9 +57,7 @@ export const getListTraceProductsHandler = async (req: Request, res: Response, n
         };
 
         // List Trace Products
-        const { traceProducts, pagination } = await traceProductService.listTraceProducts(userAddress, userRole, query);
-
-        console.log(traceProducts);
+        const { traceProducts, pagination } = await traceProductService.listTraceProducts(userAddress, query);
 
         res.json({
             status: "success",
@@ -136,8 +133,6 @@ export const postVerifyTraceProductHandler = async (req: Request, res: Response,
             const dataHashDB = await traceEventService.generateDataHash(traceEvent.id);
             const traceEventEth = await traceEventService.getTraceEventByIdFromBlockchain(traceEvent.id);
             const dataHashEth = traceEventEth[1];
-
-            console.log(traceEventEth);
 
             if (!traceEvent.isRecorded || dataHashEth === "0x0000000000000000000000000000000000000000000000000000000000000000") {
                 missingEvents.push(traceEvent.id);

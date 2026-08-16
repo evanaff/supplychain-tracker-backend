@@ -37,7 +37,6 @@ class TraceProductService {
 
     async listTraceProducts(
         address: string,
-        role: Role,
         query: ListTraceProductsQueryDTO
     ) {
         const {
@@ -62,14 +61,6 @@ class TraceProductService {
 
         if (filter) {
             conditions.push(eq(schema.traceProducts.currentActivity, filter));
-        }
-
-        if (role === "GROWER") {
-            conditions.push(eq(schema.traceProducts.creatorBlockchainAddress, address));
-        }
-        
-        if (role === "DISTRIBUTOR" || role === "RETAILER") {
-            conditions.push(eq(schema.traceProducts.currentOwnerBlockchainAddress, address));
         }
 
         const whereClause = conditions.length > 0

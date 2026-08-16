@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "SignatureValidator",
+  "sourceName": "contracts/SignatureValidator.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea26469706673582212207ba85ef6f60c0984a42e30a28ff5b2d04b372ceec4b804ff06d14e7d73b27f4464736f6c634300081c0033",
+  "deployedBytecode": "0x6080604052600080fdfea26469706673582212207ba85ef6f60c0984a42e30a28ff5b2d04b372ceec4b804ff06d14e7d73b27f4464736f6c634300081c0033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

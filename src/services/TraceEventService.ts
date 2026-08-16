@@ -1,6 +1,6 @@
-import { count, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { AbiCoder, keccak256, toUtf8Bytes } from "ethers";
+import { AbiCoder, ethers, keccak256, toUtf8Bytes } from "ethers";
 
 import { db } from "../lib/db";
 import * as schema from "../lib/db/schema";

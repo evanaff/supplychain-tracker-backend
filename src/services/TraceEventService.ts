@@ -195,11 +195,6 @@ class TraceEventService {
                         product: true
                     }
                 },
-                actor: {
-                    with: {
-                        location: true
-                    }
-                }
             }
         });
 

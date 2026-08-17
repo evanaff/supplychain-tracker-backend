@@ -6,8 +6,8 @@ const config = {
     app: {
         host: process.env.HOST,
         port: Number(process.env.PORT) || 5000,
-        clientUrl: process.env.CLIENT_URL,
-        domainName: process.env.DOMAIN_NAME
+        clientUrl: process.env.CLIENT_URL || '',
+        domainName: process.env.DOMAIN_NAME,
     },
     db: {
         url: process.env.DATABASE_URL

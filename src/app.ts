@@ -29,7 +29,14 @@ const errorHandler = (err: Error, req: Request, res: Response, next: NextFunctio
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = [
+    "http://localhost:5173",
+    config.app.clientUrl,
+].filter(Boolean);
+
+app.use(cors({
+    origin: allowedOrigins
+}));
 app.use(express.json());
 
 app.get('/', (req: Request, res: Response) => {

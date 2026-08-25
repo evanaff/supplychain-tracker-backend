@@ -12,7 +12,8 @@
     "db-generate": "npx drizzle-kit generate",
     "db-migrate": "npx drizzle-kit migrate",
     "node": "npx hardhat node",
-    "contract": "npx hardhat ignition deploy ./ignition/modules/ProductTracker.ts --network localhost"
+    "contract": "npx hardhat ignition deploy ./ignition/modules/SupplyChainTracker.ts --network localhost",
+    "compile": "npx hardhat compile"
   },
   "keywords": [],
   "author": "",

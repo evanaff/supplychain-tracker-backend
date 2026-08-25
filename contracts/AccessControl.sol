@@ -3,7 +3,7 @@ pragma solidity ^0.8.28;
 
 contract AccessControl {
     address public owner;
-    mapping(address => bool) public executors;
+    mapping(address => bool) public actors;
 
     constructor() {
         owner = msg.sender;
@@ -14,20 +14,20 @@ contract AccessControl {
         _;
     }
 
-    modifier onlyExecutor() {
-        require(executors[msg.sender] == true, "Unauthorized executor access");
+    modifier onlyActor() {
+        require(actors[msg.sender] == true, "Unauthorized actor access");
         _;
     }
 
-    function addExecutor(address _executor) public onlyAdmin {
-        require(!executors[_executor], "Executor is already registered");
+    function addActor(address _actor) public onlyAdmin {
+        require(!actors[_actor], "actor is already registered");
 
-        executors[_executor] = true;
+        actors[_actor] = true;
     }
 
-    function removeExecutor(address _executor) public onlyAdmin {
-        require(executors[_executor], "Executor is not registered");
+    function removeActor(address _actor) public onlyAdmin {
+        require(actors[_actor], "actor is not registered");
 
-        executors[_executor] = false;
+        actors[_actor] = false;
     }
 }

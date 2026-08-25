@@ -16,7 +16,7 @@ contract SupplyChainTracker is AccessControl, SignatureValidator {
         string memory _traceEventId,
         bytes32 _dataHash,
         bytes memory _signature
-    ) public onlyExecutor {
+    ) public onlyActor {
         require(
             bytes(traceEvents[_traceEventId].traceEventId).length == 0,
             "Trace event already exists"

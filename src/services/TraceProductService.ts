@@ -113,6 +113,15 @@ class TraceProductService {
 
         return traceProductRecord;
     }
+    
+    async countTraceProduct() {
+        const traceProductCount = await db.select({
+            total: count()
+        }).from(schema.traceProducts);
+        const totalTraceProducts = traceProductCount[0].total;
+
+        return totalTraceProducts;
+    }
 
     async generateLotNumber(gtin: string) {
         const today = new Date().toISOString().slice(0, 10);

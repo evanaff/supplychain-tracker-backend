@@ -146,7 +146,7 @@ class TraceEventService {
                 if (lastTraceEvent.supplyChainActivity === "SHIPPING" || lastTraceEvent.supplyChainActivity === "SELLING") {
                     throw new InvariantError("Invalid supply chain step sequence");
                 }
-                if (!lastTraceEvent.isRecorded) {
+                if (!lastTraceEvent.isSubmitted) {
                     throw new InvariantError("Last event is not recorded on blockchain")
                 }
                 if (actorRecord.locationGln !== currentOwner.locationGln) {
@@ -164,9 +164,6 @@ class TraceEventService {
                 if (lastTraceEvent.supplyChainActivity !== "SHIPPING") {
                     throw new InvariantError("Invalid supply chain step sequence");
                 }
-                if (!lastTraceEvent.isRecorded) {
-                    throw new InvariantError("Last event is not recorded on blockchain")
-                }
                 if (actorRecord.locationGln !== lastTraceEvent.destinationLocationJson?.gln) {
                     throw new InvariantError("Invalid location of receiving destination");
                 }
@@ -176,7 +173,7 @@ class TraceEventService {
                 if (lastTraceEvent.supplyChainActivity !== "RECEIVING") {
                     throw new InvariantError("Invalid supply chain step sequence");
                 }
-                if (!lastTraceEvent.isRecorded) {
+                if (!lastTraceEvent.isSubmitted) {
                     throw new InvariantError("Last event is not recorded on blockchain")
                 }
                 break;
@@ -288,7 +285,7 @@ class TraceEventService {
 
         await db.update(schema.traceEvents).set({
             txHash,
-            isRecorded: true
+            isSubmitted: true
         }).where(eq(schema.traceEvents.id, traceEventId));
     }
 

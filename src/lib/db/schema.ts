@@ -246,7 +246,7 @@ export const traceEvents = pgTable(
 
         txHash: text("tx_hash"),
 
-        isRecorded: boolean("is_recorded")
+        isSubmitted: boolean("is_submitted")
             .default(false)
             .notNull(),
     },
@@ -263,9 +263,9 @@ export const traceEvents = pgTable(
             "idx_trace_event_timestamp"
         ).on(table.timestamp),
 
-        recordedIdx: index(
-            "idx_trace_event_recorded"
-        ).on(table.isRecorded),
+        submittedIdx: index(
+            "idx_trace_event_submitted"
+        ).on(table.isSubmitted),
     })
 );
 

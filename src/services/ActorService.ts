@@ -59,7 +59,7 @@ class ActorService {
 
         let tx
         try {
-            tx = await contract.addExecutor(blockchainAddress);
+            tx = await contract.addActor(blockchainAddress);
             tx.wait();
         } catch (error: any) {
             throw new InvariantError(`Blockchain transaction failed: ${error.reason}`);

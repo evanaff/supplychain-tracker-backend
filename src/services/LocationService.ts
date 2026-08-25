@@ -1,4 +1,4 @@
-import { and, eq, ilike, count, or, not, ne } from "drizzle-orm";
+import { and, eq, ilike, count, or, not, ne, sql } from "drizzle-orm";
 
 import { db } from "../lib/db";
 import * as schema from "../lib/db/schema";
@@ -27,17 +27,24 @@ class LocationService {
         const {
                 page = 1,
                 limit = 10,
-                search
+                search,
+                filter
             } = query;
     
             const offset = (page - 1) * limit;
     
             const conditions = [];
+            
+            if (filter) {
+                conditions.push(eq(schema.locations.allowedRole, filter));
+            }
+            
             if (search) {
                 conditions.push(
                     or(
                         ilike(schema.locations.name, `%${search}%`),
-                        ilike(schema.locations.gln, `%${search}%`)
+                        ilike(schema.locations.gln, `%${search}%`),
+                        sql`${schema.locations.allowedRole}::text ILIKE ${`%${search}%`}`
                     )
                 );
             }

@@ -143,7 +143,7 @@ export const postCreateSellingEventHandler = async (req: Request, res: Response,
     }
 }
 
-export const getGenerateMessageHashHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const getEventHashHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
         // Get Params
         const traceEventId = req.params.id as string;
@@ -155,7 +155,8 @@ export const getGenerateMessageHashHandler = async (req: Request, res: Response,
         res.json({
             status: "success",
             data: {
-                messageHash
+                messageHash,
+                dataHash
             }
         });
     } catch (error) {

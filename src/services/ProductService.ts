@@ -1,4 +1,4 @@
-import { and, count, ilike } from "drizzle-orm";
+import { and, count, ilike, or } from "drizzle-orm";
 
 import { db } from "../lib/db";
 import { products } from "../lib/db/schema";
@@ -29,7 +29,10 @@ class ProductService {
 
         if (search) {
             conditions.push(
-                ilike(products.varietyName, `%${search}%`)
+                or(
+                    ilike(products.gtin, `%${search}%`),
+                    ilike(products.varietyName, `%${search}%`)
+                )
             )
         }
 
@@ -59,6 +62,15 @@ class ProductService {
                 totalPages
             }
         }
+    }
+
+    async countProduct() {
+        const productCount = await db.select({
+            total: count()
+        }).from(products);
+        const totalProducts = productCount[0].total;
+
+        return totalProducts;
     }
 }
 

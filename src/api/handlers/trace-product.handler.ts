@@ -134,7 +134,7 @@ export const postVerifyTraceProductHandler = async (req: Request, res: Response,
             const traceEventEth = await traceEventService.getTraceEventByIdFromBlockchain(traceEvent.id);
             const dataHashEth = traceEventEth[1];
 
-            if (!traceEvent.isRecorded || dataHashEth === "0x0000000000000000000000000000000000000000000000000000000000000000") {
+            if (!traceEvent.isSubmitted || dataHashEth === "0x0000000000000000000000000000000000000000000000000000000000000000") {
                 missingEvents.push(traceEvent.id);
                 continue;
             }

@@ -77,7 +77,7 @@ class AuthService {
         );
 
         const refreshToken = crypto.randomBytes(64).toString("hex");
-        const refreshTokenExpiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000); 
+        const refreshTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); 
 
         await db.insert(schema.refreshTokens).values({
             address: record.blockchainAddress,
@@ -155,7 +155,7 @@ class AuthService {
         await db.delete(schema.refreshTokens).where(eq(schema.refreshTokens.token, refreshToken));
         
         const newRefreshToken = crypto.randomBytes(64).toString("hex");
-        const newRefreshTokenExpiresAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000); 
+        const newRefreshTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); 
 
         await db.insert(schema.refreshTokens).values({
             address: actorRecord.blockchainAddress,

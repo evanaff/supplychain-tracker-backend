@@ -4,7 +4,6 @@ import * as handler from "../handlers/trace-event.handler";
 
 const router = Router();
 
-// Trace Events
 router.post("/", authenticateUser, handler.postCreateTraceEventHandler);
 router.get("/:id", authenticateUser, handler.getTraceEventByIdHandler);
 router.get("/:id/hash", authenticateUser, handler.getEventHashHandler);

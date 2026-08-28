@@ -4,7 +4,6 @@ import * as handler from "../handlers/trace-product.handler";
 
 const router = Router();
 
-// Trace Products
 router.post("/", authenticateUser, authorizeUser(["GROWER"]), handler.postCreateTraceProductHandler);
 router.get("/", authenticateUser, handler.getListTraceProductsHandler);
 router.get("/:id", authenticateUser, handler.getTraceProductByIdHandler);

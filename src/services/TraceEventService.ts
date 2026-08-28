@@ -145,7 +145,7 @@ class TraceEventService {
                 break;
         
             case "SHIPPING":
-                if (lastTraceEvent.supplyChainActivity === "SHIPPING" || lastTraceEvent.supplyChainActivity === "SELLING") {
+                if (!lastTraceEvent || lastTraceEvent.supplyChainActivity === "SHIPPING" || lastTraceEvent.supplyChainActivity === "SELLING") {
                     throw new InvariantError("Invalid supply chain step sequence");
                 }
                 if (!lastTraceEvent.isSubmitted) {
@@ -166,7 +166,7 @@ class TraceEventService {
                 break;
         
             case "RECEIVING":
-                if (lastTraceEvent.supplyChainActivity !== "SHIPPING") {
+                if (!lastTraceEvent || lastTraceEvent.supplyChainActivity !== "SHIPPING") {
                     throw new InvariantError("Invalid supply chain step sequence");
                 }
                 if (actorRecord.locationGln !== lastTraceEvent.destinationLocationJson?.gln) {
@@ -178,7 +178,7 @@ class TraceEventService {
                 break;
         
             case "SELLING":
-                if (lastTraceEvent.supplyChainActivity !== "RECEIVING") {
+                if (!lastTraceEvent || lastTraceEvent.supplyChainActivity !== "RECEIVING") {
                     throw new InvariantError("Invalid supply chain step sequence");
                 }
                 if (!lastTraceEvent.isSubmitted) {

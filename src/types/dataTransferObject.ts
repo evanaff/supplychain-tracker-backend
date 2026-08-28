@@ -67,6 +67,7 @@ export type ListTraceProductsQueryDTO = {
 // Trace Events
 export type CreateTraceEventDTO = {
     traceProductId: string;
+    supplyChainActivity: SupplyChainActivity
     destinationLocationGln?: string;
 };
 

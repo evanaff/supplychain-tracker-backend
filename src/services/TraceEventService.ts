@@ -27,10 +27,11 @@ class TraceEventService {
     async createTraceEvent(
         address: string,
         payload: CreateTraceEventDTO,
-        activity: SupplyChainActivity
-    ) {        
+    ) {
+        await this.validateTraceEventSequence(address, payload);
+
         let destinationLocationRecord;
-        if (payload.destinationLocationGln) {
+        if (payload.destinationLocationGln && payload.supplyChainActivity == "SHIPPING") {
             destinationLocationRecord = await db.query.locations.findFirst({
                 where: eq(schema.locations.gln, payload.destinationLocationGln)
             });
@@ -60,7 +61,6 @@ class TraceEventService {
         }
 
         const id = `TRE-${nanoid(6)}`;
-
         const result = await db.insert(schema.traceEvents).values({
             id,
             traceProductId: payload.traceProductId,
@@ -96,11 +96,11 @@ class TraceEventService {
                 address: destinationLocationRecord.address
             } 
             : null,
-            supplyChainActivity: activity,
+            supplyChainActivity: payload.supplyChainActivity,
         }).returning();
 
         await db.update(schema.traceProducts).set({
-            currentActivity: activity,
+            currentActivity: payload.supplyChainActivity,
             currentOwnerBlockchainAddress: address
         }).where(eq(schema.traceProducts.id, payload.traceProductId));
 
@@ -109,8 +109,7 @@ class TraceEventService {
 
     async validateTraceEventSequence(
         address: string,
-        payload: CreateTraceEventDTO,
-        activity: SupplyChainActivity,
+        payload: CreateTraceEventDTO
     ) {
         const actorRecord = await db.query.actors.findFirst({
             where: eq(schema.actors.blockchainAddress, address)
@@ -135,10 +134,13 @@ class TraceEventService {
 
         const lastTraceEvent = await this.getLastTraceEvent(payload.traceProductId);
 
-        switch (activity) {
+        switch (payload.supplyChainActivity) {
             case "HARVESTING":
                 if (traceProduct.currentActivity !== "CREATED" || lastTraceEvent) {
                     throw new InvariantError("Invalid supply chain step sequence");
+                }
+                if (actorRecord.role !== "GROWER") {
+                    throw new InvariantError("Invalid actor role");
                 }
                 break;
         
@@ -158,6 +160,9 @@ class TraceEventService {
                 if (actorRecord.locationGln === payload.destinationLocationGln) {
                     throw new InvariantError("Source location and destination location must be different")
                 }
+                if (actorRecord.role === "RETAILER") {
+                    throw new InvariantError("Invalid actor role");
+                }
                 break;
         
             case "RECEIVING":
@@ -167,6 +172,9 @@ class TraceEventService {
                 if (actorRecord.locationGln !== lastTraceEvent.destinationLocationJson?.gln) {
                     throw new InvariantError("Invalid location of receiving destination");
                 }
+                if (actorRecord.role === "GROWER") {
+                    throw new InvariantError("Invalid actor role");
+                }
                 break;
         
             case "SELLING":
@@ -175,6 +183,9 @@ class TraceEventService {
                 }
                 if (!lastTraceEvent.isSubmitted) {
                     throw new InvariantError("Last event is not recorded on blockchain")
+                }
+                if (actorRecord.role !== "RETAILER") {
+                    throw new InvariantError("Invalid actor role");
                 }
                 break;
         

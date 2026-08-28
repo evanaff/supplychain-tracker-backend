@@ -29,7 +29,7 @@ export const getTraceEventByIdHandler = async (req: Request, res: Response, next
     }
 }
 
-export const postCreateHarvestingEventHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const postCreateTraceEventHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
         // Get User Address
         const user = req.user;
@@ -40,96 +40,10 @@ export const postCreateHarvestingEventHandler = async (req: Request, res: Respon
 
         // Validate Payload
         const payload = req.body;
-        TraceEventValidator.validateCreateGeneralEventPayloadSchema(payload);
+        TraceEventValidator.validateCreateTraceEventPayloadSchema(payload);
 
-        // Create Harvesting Event
-        await traceEventService.validateTraceEventSequence(userAddress, payload, "HARVESTING");
-        const traceEvent = await traceEventService.createTraceEvent(userAddress, payload, "HARVESTING");
-
-        res.status(201).json({
-            status: "success",
-            message: "Trace event created successfully",
-            data: {
-                traceEvent
-            }
-        });
-    } catch (error) {
-        next(error);
-    }
-}
-
-export const postCreateShippingEventHandler = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        // Get User Address
-        const user = req.user;
-        if (!user) {
-            throw new AuthorizationError("Unauthorized access");
-        }
-        const userAddress = user.address;
-
-        const payload = req.body;
-        TraceEventValidator.validateCreateShippingEventPayloadSchema(payload);
-
-        // Create Shipping Event
-        await traceEventService.validateTraceEventSequence(userAddress, payload, "SHIPPING");
-        const traceEvent = await traceEventService.createTraceEvent(userAddress, payload, "SHIPPING");
-
-        res.status(201).json({
-            status: "success",
-            message: "Trace event created successfully",
-            data: {
-                traceEvent
-            }
-        });
-    } catch (error) {
-        next(error);
-    }
-}
-
-export const postCreateReceivingEventHandler = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        // Get User Address
-        const user = req.user;
-        if (!user) {
-            throw new AuthorizationError("Unauthorized access");
-        }
-        const userAddress = user.address;
-
-        const payload = req.body;
-        TraceEventValidator.validateCreateGeneralEventPayloadSchema(payload);
-
-        // Create Shipping Event
-        await traceEventService.validateTraceEventSequence(userAddress, payload, "RECEIVING");
-        const traceEvent = await traceEventService.createTraceEvent(userAddress, payload, "RECEIVING");
-
-        res.status(201).json({
-            status: "success",
-            message: "Trace event created successfully",
-            data: {
-                traceEvent
-            }
-        });
-    } catch (error) {
-        next(error);
-    }
-}
-
-export const postCreateSellingEventHandler = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        // Get User Address
-        const user = req.user;
-        if (!user) {
-            throw new AuthorizationError("Unauthorized access");
-        }
-        const userAddress = user.address;
-
-        // Validate Payload
-        const payload = req.body;
-        TraceEventValidator.validateCreateGeneralEventPayloadSchema(payload);
-
-        // Create Selling Event
-        await traceEventService.validateTraceEventSequence(userAddress, payload, "SELLING");
-        const traceEvent = await traceEventService.createTraceEvent(userAddress, payload, "SELLING");
+        // Create Trace Event
+        const traceEvent = await traceEventService.createTraceEvent(userAddress, payload);
 
         res.status(201).json({
             status: "success",

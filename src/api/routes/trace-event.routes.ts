@@ -5,15 +5,9 @@ import * as handler from "../handlers/trace-event.handler";
 const router = Router();
 
 // Trace Events
-router.post("/harvesting", authenticateUser, authorizeUser(["GROWER"]), handler.postCreateHarvestingEventHandler);
-router.post("/shipping", authenticateUser, authorizeUser(["GROWER", "DISTRIBUTOR"]), handler.postCreateShippingEventHandler);
-router.post("/receiving", authenticateUser, authorizeUser(["DISTRIBUTOR", "RETAILER"]), handler.postCreateReceivingEventHandler);
-router.post("/selling", authenticateUser, authorizeUser(["RETAILER"]), handler.postCreateSellingEventHandler);
+router.post("/", authenticateUser, handler.postCreateTraceEventHandler);
 router.get("/:id", authenticateUser, handler.getTraceEventByIdHandler);
 router.get("/:id/hash", authenticateUser, handler.getEventHashHandler);
 router.post("/:id/save-txhash", authenticateUser, handler.postSaveTxHashHandler);
-
-// router.get("/:id/message-hash", authenticateUser, handler.getGenerateMessageHashHandler);
-// router.get("/:id/data-hash", authenticateUser, handler.getGenerateDataHashHandler);
 
 export default router;

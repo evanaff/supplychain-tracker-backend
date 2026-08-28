@@ -1,11 +1,8 @@
 import { z } from "zod";
 
-export const CreateGeneralEventPayloadSchema = z.object({
+export const CreateTraceEventPayloadSchema = z.object({
 	traceProductId: z.string(),
-});
-
-export const CreateShippingEventPayloadSchema = z.object({
-	traceProductId: z.string(),
+	supplyChainActivity: z.enum(["HARVESTING", "SHIPPING", "RECEIVING", "SELLING"]),
 	destinationLocationGln: z.string()
 });
 

@@ -6,7 +6,7 @@ const router = Router();
 
 router.post("/", authenticateUser, authorizeUser(["GROWER"]), handler.postCreateProductLotHandler);
 router.get("/", authenticateUser, handler.getListProductLotsHandler);
-router.get("/:id", authenticateUser, handler.getProductLotHistoryHandler);
+router.get("/:id", handler.getProductLotHistoryHandler);
 router.post("/:id/verify", handler.postVerifyProductLotHandler);
 
 export default router;

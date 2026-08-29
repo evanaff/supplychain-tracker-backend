@@ -5,42 +5,42 @@ import "./AccessControl.sol";
 import "./SignatureValidator.sol";
 
 contract SupplyChainTracker is AccessControl, SignatureValidator {
-    struct TraceEvent {
-        string traceEventId;
+    struct ProductEvent {
+        string productEventId;
         bytes32 dataHash;
     }
 
-    mapping(string => TraceEvent) public traceEvents;
+    mapping(string => ProductEvent) public productEvents;
 
-    function addTraceEvent(
-        string memory _traceEventId,
+    function addProductEvent(
+        string memory productEventId,
         bytes32 _dataHash,
         bytes memory _signature
     ) public onlyActor {
         require(
-            bytes(traceEvents[_traceEventId].traceEventId).length == 0,
-            "Trace event already exists"
+            bytes(productEvents[productEventId].productEventId).length == 0,
+            "Product event already exists"
         );
 
         address actor = msg.sender;
 
         bytes32 messageHash = keccak256(
-            abi.encode(_traceEventId, actor, _dataHash)
+            abi.encode(productEventId, actor, _dataHash)
         );
         require(
             _verifySignature(actor, messageHash, _signature),
             "Invalid signature"
         );
 
-        traceEvents[_traceEventId] = TraceEvent({
-            traceEventId: _traceEventId,
+        productEvents[productEventId] = ProductEvent({
+            productEventId: productEventId,
             dataHash: _dataHash
         });
     }
 
-    function getTraceEventById(
-        string memory _traceEventId
-    ) public view returns (TraceEvent memory) {
-        return traceEvents[_traceEventId];
+    function getProductEventById(
+        string memory productEventId
+    ) public view returns (ProductEvent memory) {
+        return productEvents[productEventId];
     }
 }

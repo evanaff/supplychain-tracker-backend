@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const CreateTraceProductPayloadSchema = z.object({
+export const CreateProductLotPayloadSchema = z.object({
     gtin: z.string().min(1, 'Product (GTIN) is required'),
     quantity: z
         .number({ error: 'Quantity must be a number' })

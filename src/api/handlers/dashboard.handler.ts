@@ -3,12 +3,12 @@ import { type Request, type Response, type NextFunction } from "express";
 import ActorService from "../../services/ActorService";
 import LocationService from "../../services/LocationService";
 import ProductService from "../../services/ProductService";
-import TraceProductService from "../../services/TraceProductService";
+import ProductLotService from "../../services/ProductLotService";
 
 const actorService = new ActorService();
 const locationService = new LocationService();
 const productService = new ProductService();
-const traceProductService = new TraceProductService();
+const productLotService = new ProductLotService();
 
 export const getAdminDashboardHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -18,7 +18,7 @@ export const getAdminDashboardHandler = async (req: Request, res: Response, next
         const totalRetailers = await actorService.countRetailer();
         const totalLocations = await locationService.countLocation();
         const totalProducts = await productService.countProduct();
-        const totalTraceProducts = await traceProductService.countTraceProduct();
+        const totalProductLots = await productLotService.countProductLot();
 
         res.json({
             status: "success",
@@ -28,7 +28,7 @@ export const getAdminDashboardHandler = async (req: Request, res: Response, next
                 totalRetailers,
                 totalLocations,
                 totalProducts,
-                totalTraceProducts
+                totalProductLots
             }
         });
     } catch (error) {

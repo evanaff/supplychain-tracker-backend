@@ -51,27 +51,27 @@ export type CreateProductDTO = {
     unitOfMeasure: string;
 }
 
-// Trace Products
-export type CreateTraceProductDTO = {
+// Product Lots
+export type CreateProductLotDTO = {
     gtin: string;
     quantity: number;
 };
 
-export type ListTraceProductsQueryDTO = {
+export type ListProductLotsQueryDTO = {
     page?: number;
     limit?: number;
     search?: string;
     filter?: SupplyChainActivity | "CREATED"
 };
 
-// Trace Events
-export type CreateTraceEventDTO = {
-    traceProductId: string;
+// Product Events
+export type CreateProductEventDTO = {
+    productLotId: string;
     supplyChainActivity: SupplyChainActivity
     destinationLocationGln?: string;
 };
 
-export type SubmitTraceEventDTO = {
+export type SubmitProductEventDTO = {
     signature: string;
 };
 

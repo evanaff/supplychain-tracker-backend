@@ -8,8 +8,8 @@ import authRoutes from "./api/routes/auth.routes.js";
 import locationRoutes from "./api/routes/location.routes.js";
 import actorRoutes from "./api/routes/actor.routes.js";
 import productRoutes from "./api/routes/product.routes.js";
-import traceProductRoutes from "./api/routes/trace-product.routes.js"
-import traceEventRoutes from "./api/routes/trace-event.routes.js"
+import productLotRoutes from "./api/routes/product-lot.routes.js"
+import productEventRoutes from "./api/routes/product-event.routes.js"
 import dashboardRoutes from "./api/routes/dashboard.routes.js"
 
 const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
@@ -47,8 +47,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/api/actors', actorRoutes);
 app.use('/api/products', productRoutes);
-app.use('/api/trace-products', traceProductRoutes);
-app.use('/api/trace-events', traceEventRoutes);
+app.use('/api/product-lots', productLotRoutes);
+app.use('/api/product-events', productEventRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
 app.use(errorHandler);

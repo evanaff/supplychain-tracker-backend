@@ -52,14 +52,14 @@ export type LocationSnapshot = {
     address: string;
 };
 
-export type productSnapshot = {
+export type ProductSnapshot = {
     gtin: string;
     varietyName: string;
     unitOfMeasure: string;
     imageUrl: string;
 }
 
-export type TraceProductSnapshot = {
+export type ProductLotsnapshot = {
     id: string;
     lotNumber: string;
     quantity: number;
@@ -132,8 +132,8 @@ export const products = pgTable(
     }
 );
 
-export const traceProducts = pgTable(
-    "trace_products",
+export const productLots = pgTable(
+    "product_lots",
     {
         id: varchar("id", {
             length: 15,
@@ -182,14 +182,14 @@ export const traceProducts = pgTable(
             .notNull(),
     },
     (table) => ({
-        gtinIdx: index("idx_trace_product_gtin").on(table.gtin),
+        gtinIdx: index("idx_product_lot_gtin").on(table.gtin),
 
         ownerIdx: index(
-            "idx_trace_product_owner"
+            "idx_product_lot_owner"
         ).on(table.currentOwnerBlockchainAddress),
         
         currentActivityIdx: index(
-            "idx_trace_product_activity"
+            "idx_product_lot_activity"
         ).on(table.currentActivity),
 
         uniqueLot: uniqueIndex(
@@ -198,27 +198,27 @@ export const traceProducts = pgTable(
     })
 );
 
-export const traceEvents = pgTable(
-    "trace_events",
+export const productEvents = pgTable(
+    "product_events",
     {
         id: varchar("id", {
             length: 15,
         }).primaryKey(),
 
-        traceProductId: varchar("trace_product_id", {
+        productLotId: varchar("product_lot_id", {
             length: 50,
         })
             .notNull()
-            .references(() => traceProducts.id, {
+            .references(() => productLots.id, {
                 onDelete: "cascade",
             }),
 
-        traceProductJson: jsonb("trace_product_json")
-            .$type<TraceProductSnapshot>()
+        productLotsJson: jsonb("product_lot_json")
+            .$type<ProductLotsnapshot>()
             .notNull(),
         
         productJson: jsonb("product_json")
-            .$type<productSnapshot>()
+            .$type<ProductSnapshot>()
             .notNull(),
 
         actorJson: jsonb("actor_json")
@@ -251,20 +251,20 @@ export const traceEvents = pgTable(
             .notNull(),
     },
     (table) => ({
-        traceProductIdx: index(
-            "idx_trace_event_trace_product"
-        ).on(table.traceProductId),
+        productLotIdx: index(
+            "idx_product_event_product_lot"
+        ).on(table.productLotId),
 
         activityIdx: index(
-            "idx_trace_event_activity"
+            "idx_product_event_activity"
         ).on(table.supplyChainActivity),
 
         timestampIdx: index(
-            "idx_trace_event_timestamp"
+            "idx_product_event_timestamp"
         ).on(table.timestamp),
 
         submittedIdx: index(
-            "idx_trace_event_submitted"
+            "idx_product_event_submitted"
         ).on(table.isSubmitted),
     })
 );
@@ -329,11 +329,11 @@ export const actorRelations = relations(
             references: [locations.gln],
         }),
 
-        createdTraceProducts: many(traceProducts, {
+        createdproductLots: many(productLots, {
             relationName: "creator",
         }),
 
-        ownedTraceProducts: many(traceProducts, {
+        ownedproductLots: many(productLots, {
             relationName: "owner",
         }),
     })
@@ -349,16 +349,16 @@ export const locationRelations = relations(
 export const productRelations = relations(
     products,
     ({ many }) => ({
-        traceProducts: many(traceProducts),
+        productLots: many(productLots),
     })
 );
 
-export const traceProductsRelations = relations(
-    traceProducts,
+export const productLotsRelations = relations(
+    productLots,
     ({ one, many }) => ({
         creator: one(actors, {
             fields: [
-                traceProducts.creatorBlockchainAddress,
+                productLots.creatorBlockchainAddress,
             ],
             references: [
                 actors.blockchainAddress,
@@ -368,7 +368,7 @@ export const traceProductsRelations = relations(
 
         owner: one(actors, {
             fields: [
-                traceProducts.currentOwnerBlockchainAddress,
+                productLots.currentOwnerBlockchainAddress,
             ],
             references: [
                 actors.blockchainAddress,
@@ -378,26 +378,26 @@ export const traceProductsRelations = relations(
 
         product: one(products, {
             fields: [
-                traceProducts.gtin,
+                productLots.gtin,
             ],
             references: [
                 products.gtin,
             ],
         }),
 
-        events: many(traceEvents),
+        events: many(productEvents),
     })
 );
 
-export const traceEventsRelations = relations(
-    traceEvents,
+export const productEventsRelations = relations(
+    productEvents,
     ({ one }) => ({
-        traceProduct: one(traceProducts, {
+        productLot: one(productLots, {
             fields: [
-                traceEvents.traceProductId,
+                productEvents.productLotId,
             ],
             references: [
-                traceProducts.id,
+                productLots.id,
             ],
         }),
     })

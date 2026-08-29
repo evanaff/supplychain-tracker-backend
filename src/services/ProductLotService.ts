@@ -4,13 +4,13 @@ import { nanoid } from "nanoid";
 import { db } from "../lib/db";
 import * as schema from "../lib/db/schema";
 import NotFoundError from "../common/exceptions/NotFoundError";
-import { CreateTraceProductDTO, ListTraceProductsQueryDTO } from "../types/dataTransferObject";
+import { CreateProductLotDTO, ListProductLotsQueryDTO } from "../types/dataTransferObject";
 
 
-class TraceProductService {
-    async createTraceProduct(
+class ProductLotService {
+    async createProductLot(
         address: string,
-        payload: CreateTraceProductDTO
+        payload: CreateProductLotDTO
     ) {
         const productRecord = await db.query.products.findFirst({
             where: eq(schema.products.gtin, payload.gtin)
@@ -19,10 +19,10 @@ class TraceProductService {
             throw new NotFoundError("Product not found");
         }
 
-        const id = `TRP-${nanoid(6)}`
+        const id = `PL-${nanoid(6)}`
         const lotNumber = await this.generateLotNumber(payload.gtin);
         
-        const result = await db.insert(schema.traceProducts).values({
+        const result = await db.insert(schema.productLots).values({
             id,
             creatorBlockchainAddress: address,
             currentOwnerBlockchainAddress: address,
@@ -34,9 +34,8 @@ class TraceProductService {
         return result[0];
     }
 
-    async listTraceProducts(
-        address: string,
-        query: ListTraceProductsQueryDTO
+    async listProductLots(
+        query: ListProductLotsQueryDTO
     ) {
         const {
             page = 1,
@@ -52,39 +51,39 @@ class TraceProductService {
         if (search) {
             conditions.push(
                 or(
-                    ilike(schema.traceProducts.id, `%${search}%`),
-                    ilike(schema.traceProducts.lotNumber, `%${search}%`)
+                    ilike(schema.productLots.id, `%${search}%`),
+                    ilike(schema.productLots.lotNumber, `%${search}%`)
                 )
             )
         }
 
         if (filter) {
-            conditions.push(eq(schema.traceProducts.currentActivity, filter));
+            conditions.push(eq(schema.productLots.currentActivity, filter));
         }
 
         const whereClause = conditions.length > 0
                                 ? and(...conditions)
                                 : undefined;
 
-        const traceProductRecords = await db.query.traceProducts.findMany({
+        const productLotRecords = await db.query.productLots.findMany({
             where: whereClause,
             limit,
             offset,
             with: {
                 product: true
             },
-            orderBy: desc(schema.traceProducts.createdAt)
+            orderBy: desc(schema.productLots.createdAt)
         });
 
         const totalItemCount = await db.select({
             total: count()
-        }).from(schema.traceProducts).where(whereClause);
+        }).from(schema.productLots).where(whereClause);
         const totalItems = totalItemCount[0].total;
 
         const totalPages = Math.ceil(totalItems/limit);
 
         return {
-            traceProducts: traceProductRecords,
+            productLots: productLotRecords,
             pagination: {
                 page,
                 limit,
@@ -94,9 +93,9 @@ class TraceProductService {
         }
     }
 
-    async getTraceProductById(id: string) {
-        const traceProductRecord = await db.query.traceProducts.findFirst({
-            where: eq(schema.traceProducts.id, id),
+    async getProductLotById(id: string) {
+        const productLotRecord = await db.query.productLots.findFirst({
+            where: eq(schema.productLots.id, id),
             with: {
                 product: true,
                 owner: {
@@ -107,31 +106,31 @@ class TraceProductService {
             }
         });
 
-        if (!traceProductRecord) {
-            throw new NotFoundError("Trace product not found");
+        if (!productLotRecord) {
+            throw new NotFoundError("Product lot not found");
         }
 
-        return traceProductRecord;
+        return productLotRecord;
     }
     
-    async countTraceProduct() {
-        const traceProductCount = await db.select({
+    async countProductLot() {
+        const productLotCount = await db.select({
             total: count()
-        }).from(schema.traceProducts);
-        const totalTraceProducts = traceProductCount[0].total;
+        }).from(schema.productLots);
+        const totalProductLots = productLotCount[0].total;
 
-        return totalTraceProducts;
+        return totalProductLots;
     }
 
     async generateLotNumber(gtin: string) {
         const today = new Date().toISOString().slice(0, 10);
 
-        const lastLot = await db.query.traceProducts.findFirst({
+        const lastLot = await db.query.productLots.findFirst({
             where: and(
-                eq(schema.traceProducts.gtin, gtin),
-                like(schema.traceProducts.lotNumber, `%${today}%`)
+                eq(schema.productLots.gtin, gtin),
+                like(schema.productLots.lotNumber, `%${today}%`)
             ),
-            orderBy: (traceProducts, { desc }) => [desc(traceProducts.lotNumber)]
+            orderBy: (ProductLots, { desc }) => [desc(ProductLots.lotNumber)]
         });
 
         let sequence = 1
@@ -147,4 +146,4 @@ class TraceProductService {
     }
 }
 
-export default TraceProductService
+export default ProductLotService

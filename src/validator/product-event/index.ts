@@ -1,9 +1,9 @@
 import * as schema from "./schema";
 import InvariantError from "../../common/exceptions/InvariantError";
 
-const TraceEventValidator = {    
-    validateCreateTraceEventPayloadSchema: async (payload: unknown) => {
-        const validationResult = schema.CreateTraceEventPayloadSchema.safeParse(payload);
+const ProductEventValidator = {    
+    validateCreateProductEventPayloadSchema: async (payload: unknown) => {
+        const validationResult = schema.CreateProductEventPayloadSchema.safeParse(payload);
         if (!validationResult.success) {
             const errorMessage = validationResult.error.issues[0].path + ', ' + validationResult.error.issues[0].message;
             throw new InvariantError(errorMessage);
@@ -19,4 +19,4 @@ const TraceEventValidator = {
     },    
 }
 
-export default TraceEventValidator;
+export default ProductEventValidator;

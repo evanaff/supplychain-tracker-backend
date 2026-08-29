@@ -52,22 +52,3 @@ export const getListLocationsHandler = async (req: Request, res: Response, next:
         next(error);
     }
 }
-
-export const getLocationByGlnHandler = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        // Get Params
-        const gln = req.params.gln as string;
-
-        // Get Location
-        const location = await locationService.getLocationByGln(gln);
-
-        res.json({
-            status: "success",
-            data: {
-                location
-            }
-        });
-    } catch (error) {
-        next(error);
-    }
-}

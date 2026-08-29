@@ -54,22 +54,3 @@ export const getListActorsHandler = async (req: Request, res: Response, next: Ne
         next(error);
     }
 }
-
-export const getActorByBlockchainAddressHandler = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        // Get Params
-        const blockchainAddress = req.params.blockchainAddress as string;
-
-        // Get Actor
-        const actor = await actorService.getActorByBlockchainAddress(blockchainAddress);
-
-        res.json({
-            status: "success",
-            data: {
-                actor
-            }
-        });
-    } catch (error) {
-        next(error);
-    }
-}

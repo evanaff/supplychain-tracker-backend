@@ -72,7 +72,6 @@ class ProductEventService {
                 gtin: productLotRecord.product.gtin,
                 varietyName: productLotRecord.product.varietyName,
                 unitOfMeasure: productLotRecord.product.unitOfMeasure,
-                imageUrl: productLotRecord.product.imageUrl
             },
             actorJson: {
                 blockchainAddress: actorRecord.blockchainAddress,
@@ -147,7 +146,7 @@ class ProductEventService {
                 if (!lastProductEvent || lastProductEvent.supplyChainActivity === "SHIPPING" || lastProductEvent.supplyChainActivity === "SELLING") {
                     throw new InvariantError("Invalid supply chain step sequence");
                 }
-                if (!lastProductEvent.isSubmitted) {
+                if (!lastProductEvent.txHash) {
                     throw new InvariantError("Last event is not recorded on blockchain")
                 }
                 if (actorRecord.locationGln !== currentOwner.locationGln) {
@@ -180,7 +179,7 @@ class ProductEventService {
                 if (!lastProductEvent || lastProductEvent.supplyChainActivity !== "RECEIVING") {
                     throw new InvariantError("Invalid supply chain step sequence");
                 }
-                if (!lastProductEvent.isSubmitted) {
+                if (!lastProductEvent.txHash) {
                     throw new InvariantError("Last event is not recorded on blockchain")
                 }
                 if (actorRecord.role !== "RETAILER") {
@@ -246,10 +245,10 @@ class ProductEventService {
         ProductEventId: string,
         dataHash: string
     ) {
-        const ProductEvent = await db.query.productEvents.findFirst({
+        const productEvent = await db.query.productEvents.findFirst({
             where: eq(schema.productEvents.id, ProductEventId)
         });
-        if (!ProductEvent) {
+        if (!productEvent) {
             throw new NotFoundError("Product event not found");
         }
 
@@ -257,10 +256,11 @@ class ProductEventService {
 
         const messageHash = keccak256(
             abiCoder.encode(
-                ["string", "address", "bytes32"],
+                ["string", "string", "address", "bytes32"],
                 [
-                    ProductEvent.id, 
-                    ProductEvent.actorJson.blockchainAddress, 
+                    productEvent.id,
+                    productEvent.productLotId,
+                    productEvent.actorJson.blockchainAddress, 
                     dataHash
                 ]
             )
@@ -295,7 +295,6 @@ class ProductEventService {
 
         await db.update(schema.productEvents).set({
             txHash,
-            isSubmitted: true
         }).where(eq(schema.productEvents.id, ProductEventId));
     }
 
@@ -304,21 +303,13 @@ class ProductEventService {
     // -------------------------------
 
     async getProductEventByIdFromBlockchain(ProductEventId: string) {
-        const ProductEventDb = await db.query.productEvents.findFirst({
-            where: eq(schema.productEvents.id, ProductEventId)
-        });
-        if (!ProductEventDb) {
-            throw new NotFoundError("Product event not found");
-        }
-
-        let ProductEventEth
         try {
-            ProductEventEth = await contract.getProductEventById(ProductEventId);
+            const productEventEth = await contract.productEvents(ProductEventId);
+
+            return productEventEth;
         } catch (error: any) {
             throw new InvariantError(`Blockchain transaction failed: ${error.reason}`);
         }
-
-        return ProductEventEth;
     }
 }
 

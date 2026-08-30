@@ -5,9 +5,15 @@ import { db } from "../lib/db";
 import * as schema from "../lib/db/schema";
 import NotFoundError from "../common/exceptions/NotFoundError";
 import { CreateProductLotDTO, ListProductLotsQueryDTO } from "../types/dataTransferObject";
+import { contract } from "../lib/contract";
+import InvariantError from "../common/exceptions/InvariantError";
 
 
 class ProductLotService {
+    // -------------------------------
+    // PosgreSQL / Database Methods
+    // -------------------------------
+
     async createProductLot(
         address: string,
         payload: CreateProductLotDTO
@@ -143,6 +149,20 @@ class ProductLotService {
         const sequenceStr = sequence.toString().padStart(3, "0");
    
         return `LOT-${today}-${sequenceStr}`
+    }
+
+    // -------------------------------
+    // Ethereum / Blockchain Methods
+    // -------------------------------
+
+    async getProductEventIdsByProductLotIdFromBlockchain(productLotId: string) {
+        try {
+            const productEventIds = await contract.getProductEventIdsByProductLotId(productLotId);
+
+            return productEventIds;
+        } catch (error: any) {
+            throw new InvariantError(`Blockchain transaction failed: ${error.reason}`);
+        }
     }
 }
 

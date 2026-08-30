@@ -56,7 +56,6 @@ export type ProductSnapshot = {
     gtin: string;
     varietyName: string;
     unitOfMeasure: string;
-    imageUrl: string;
 }
 
 export type ProductLotsnapshot = {
@@ -245,10 +244,6 @@ export const productEvents = pgTable(
             .notNull(),
 
         txHash: text("tx_hash"),
-
-        isSubmitted: boolean("is_submitted")
-            .default(false)
-            .notNull(),
     },
     (table) => ({
         productLotIdx: index(
@@ -262,10 +257,6 @@ export const productEvents = pgTable(
         timestampIdx: index(
             "idx_product_event_timestamp"
         ).on(table.timestamp),
-
-        submittedIdx: index(
-            "idx_product_event_submitted"
-        ).on(table.isSubmitted),
     })
 );
 

@@ -11,36 +11,38 @@ contract SupplyChainTracker is AccessControl, SignatureValidator {
     }
 
     mapping(string => ProductEvent) public productEvents;
+    mapping(string => string[]) private productLotEventIds;
 
     function addProductEvent(
-        string memory productEventId,
+        string memory _productEventId,
+        string memory _productLotId,
         bytes32 _dataHash,
         bytes memory _signature
     ) public onlyActor {
         require(
-            bytes(productEvents[productEventId].productEventId).length == 0,
+            bytes(productEvents[_productEventId].productEventId).length == 0,
             "Product event already exists"
         );
 
         address actor = msg.sender;
 
         bytes32 messageHash = keccak256(
-            abi.encode(productEventId, actor, _dataHash)
+            abi.encode(_productEventId, _productLotId, actor, _dataHash)
         );
         require(
             _verifySignature(actor, messageHash, _signature),
             "Invalid signature"
         );
 
-        productEvents[productEventId] = ProductEvent({
-            productEventId: productEventId,
+        productEvents[_productEventId] = ProductEvent({
+            productEventId: _productEventId,
             dataHash: _dataHash
         });
+
+        productLotEventIds[_productLotId].push(_productEventId);
     }
 
-    function getProductEventById(
-        string memory productEventId
-    ) public view returns (ProductEvent memory) {
-        return productEvents[productEventId];
+    function getProductEventIdsByProductLotId(string memory _productLotId) public view returns (string[] memory) {
+        return productLotEventIds[_productLotId];
     }
 }

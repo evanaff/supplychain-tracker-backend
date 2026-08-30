@@ -105,7 +105,7 @@ export const postVerifyProductLotHandler = async (req: Request, res: Response, n
             const productEventEth = await productEventService.getProductEventByIdFromBlockchain(productEvent.id);
             const dataHashEth = productEventEth[1];
 
-            if (!productEvent.isSubmitted || dataHashEth === "0x0000000000000000000000000000000000000000000000000000000000000000") {
+            if (!productEvent.isSubmitted) {
                 missingEvents.push(productEvent.id);
                 continue;
             }

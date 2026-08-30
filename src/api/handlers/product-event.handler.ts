@@ -55,25 +55,6 @@ export const getEventHashHandler = async (req: Request, res: Response, next: Nex
     }
 }
 
-export const getGenerateDataHashHandler = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        // Get Params
-        const productEventId = req.params.id as string;
-
-        // Generate Message Hash
-        const dataHash = await productEventService.generateDataHash(productEventId);
-
-        res.json({
-            status: "success",
-            data: {
-                dataHash
-            }
-        });
-    } catch (error) {
-        next(error);
-    }
-}
-
 export const postSaveTxHashHandler =  async (req: Request, res: Response, next: NextFunction) => {
     try {
         // Get Params

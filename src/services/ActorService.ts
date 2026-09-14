@@ -4,7 +4,7 @@ import { db } from "../lib/db";
 import * as schema from "../lib/db/schema";
 import InvariantError from "../common/exceptions/InvariantError";
 import NotFoundError from "../common/exceptions/NotFoundError";
-import { ListActorsQueryDTO, CreateActorDTO, EditActorDTO } from "../types/dataTransferObject";
+import { ListActorsQueryDTO, CreateActorDTO } from "../types/dataTransferObject";
 import { isAddress } from "ethers";
 import { contract } from "../lib/contract";
 

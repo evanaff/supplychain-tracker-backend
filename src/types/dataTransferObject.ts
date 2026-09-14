@@ -15,11 +15,6 @@ export type ListActorsQueryDTO = {
     filter?: Role;
 };
 
-export type EditActorDTO = {
-    name: string;
-    role: Role;
-};
-
 // Locations
 export type CreateLocationDTO = {
     gln: string;
@@ -36,13 +31,6 @@ export type ListLocationsQueryDTO = {
     search?: string;
     filter?: Role;
 }
-
-export type EditLocationDTO = {
-    name: string;
-    province: string;
-    city: string;
-    address: string;
-};
 
 // Products
 export type CreateProductDTO = {
@@ -69,10 +57,6 @@ export type CreateProductEventDTO = {
     productLotId: string;
     supplyChainActivity: SupplyChainActivity
     destinationLocationGln?: string;
-};
-
-export type SubmitProductEventDTO = {
-    signature: string;
 };
 
 // Products

@@ -4,7 +4,7 @@ import { db } from "../lib/db";
 import * as schema from "../lib/db/schema";
 import InvariantError from "../common/exceptions/InvariantError";
 import NotFoundError from "../common/exceptions/NotFoundError";
-import { EditLocationDTO, ListLocationsQueryDTO, type CreateLocationDTO } from "../types/dataTransferObject";
+import { ListLocationsQueryDTO, type CreateLocationDTO } from "../types/dataTransferObject";
 
 class LocationService {
     async createLocation(payload: CreateLocationDTO) {

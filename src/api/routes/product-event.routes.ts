@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticateUser, authorizeUser } from "../../middleware";
+import { authenticateUser } from "../../middleware";
 import * as handler from "../handlers/product-event.handler";
 
 const router = Router();

@@ -60,9 +60,10 @@ class ActorService {
         let tx
         try {
             tx = await contract.addActor(blockchainAddress);
-            tx.wait();
+            await tx.wait();
         } catch (error: any) {
-            throw new InvariantError(`Blockchain transaction failed: ${error.reason}`);
+            await db.delete(schema.actors).where(eq(schema.actors.blockchainAddress, actorRecord.blockchainAddress));
+            throw new Error(`Blockchain transaction failed: ${error.reason}`);
         }
 
         await db.update(schema.actors).set({

@@ -219,10 +219,9 @@ class ProductEventService {
             throw new NotFoundError("Product event not found");
         }
 
-        const timestamp =
-            typeof ProductEvent.timestamp === "string"
-                ? ProductEvent.timestamp
-                : ProductEvent.timestamp.toISOString();
+        const timestamp = typeof ProductEvent.timestamp === "string"
+            ? ProductEvent.timestamp
+            : ProductEvent.timestamp.toISOString();
 
         const jsonPayload = {
             productLotId: ProductEvent.productLotId,

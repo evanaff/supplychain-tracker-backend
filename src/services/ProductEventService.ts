@@ -1,6 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { AbiCoder, ethers, keccak256, toUtf8Bytes } from "ethers";
+import { keccak256, toUtf8Bytes } from "ethers";
 
 import { db } from "../lib/db";
 import * as schema from "../lib/db/schema";
@@ -238,34 +238,6 @@ class ProductEventService {
         const dataHash = keccak256(toUtf8Bytes(stringPayload));
 
         return dataHash
-    }
-
-    async generateMessageHash(
-        ProductEventId: string,
-        dataHash: string
-    ) {
-        const productEvent = await db.query.productEvents.findFirst({
-            where: eq(schema.productEvents.id, ProductEventId)
-        });
-        if (!productEvent) {
-            throw new NotFoundError("Product event not found");
-        }
-
-        const abiCoder = AbiCoder.defaultAbiCoder();
-
-        const messageHash = keccak256(
-            abiCoder.encode(
-                ["string", "string", "address", "bytes32"],
-                [
-                    productEvent.id,
-                    productEvent.productLotId,
-                    productEvent.actorJson.blockchainAddress, 
-                    dataHash
-                ]
-            )
-        );
-
-        return messageHash;
     }
 
     async getLastProductEvent(productLotId: string) {

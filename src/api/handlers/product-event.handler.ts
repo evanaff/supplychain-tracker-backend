@@ -41,12 +41,10 @@ export const getEventHashHandler = async (req: Request, res: Response, next: Nex
 
         // Generate Message Hash
         const dataHash = await productEventService.generateDataHash(productEventId);
-        const messageHash = await productEventService.generateMessageHash(productEventId, dataHash);
 
         res.json({
             status: "success",
             data: {
-                messageHash,
                 dataHash
             }
         });

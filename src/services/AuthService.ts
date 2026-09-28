@@ -3,7 +3,7 @@ import { isAddress } from "ethers";
 import { SiweMessage } from "siwe";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { eq } from "drizzle-orm";
+import { eq, lte } from "drizzle-orm";
 
 import { db } from "../lib/db";
 import * as schema from "../lib/db/schema";
@@ -47,7 +47,7 @@ class AuthService {
                 domain: config.app.domainName
             });
         } catch (error) {
-            throw new InvariantError("Failed to verify message");
+            throw new InvariantError(`Failed to verify message: ${error}`);
         }
 
         await db.delete(schema.nonces).where(eq(schema.nonces.address, siweAddress));
@@ -84,6 +84,8 @@ class AuthService {
             token: refreshToken,
             expiresAt: refreshTokenExpiresAt
         });
+
+        await db.delete(schema.refreshTokens).where(lte(schema.refreshTokens.expiresAt, new Date()));
 
         return { 
             accessToken, 

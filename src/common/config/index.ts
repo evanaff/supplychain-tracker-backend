@@ -8,6 +8,7 @@ const config = {
         port: Number(process.env.PORT) || 5000,
         clientUrl: process.env.CLIENT_URL || '',
         domainName: process.env.DOMAIN_NAME,
+        isProduction: process.env.IS_PRODUCTION === "true"
     },
     db: {
         url: process.env.DATABASE_URL

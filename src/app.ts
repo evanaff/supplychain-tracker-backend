@@ -11,6 +11,7 @@ import productRoutes from "./api/routes/product.routes.js";
 import productLotRoutes from "./api/routes/product-lot.routes.js"
 import productEventRoutes from "./api/routes/product-event.routes.js"
 import dashboardRoutes from "./api/routes/dashboard.routes.js"
+import cookieParser from 'cookie-parser';
 
 const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
     if (err instanceof ClientError) {
@@ -35,9 +36,11 @@ const allowedOrigins = [
 ].filter(Boolean);
 
 app.use(cors({
-    origin: allowedOrigins
+    origin: allowedOrigins,
+    credentials: true
 }));
 app.use(express.json());
+app.use(cookieParser());
 
 app.get('/', (req: Request, res: Response) => {
     res.json({ message: 'Welcome to the Supply Chain Tracker API' });

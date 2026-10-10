@@ -9,16 +9,13 @@ import config from "../common/config";
 
 export const authenticateUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const authHeader = req.headers.authorization;
-        
-        if (!authHeader) {
+        const token = req.cookies?.sct_access_token;
+
+        if (!token) {
             throw new AuthenticationError("No token provided");
         }
-
-        const token = authHeader.split(' ')[1];
-        
-        if (!token || token.split('.').length !== 3) {
-            throw new AuthenticationError("Invalid token")
+        if (token.split('.').length !== 3) {
+            throw new AuthenticationError("Invalid token");
         }
 
         const jwtSecret = config.jwt.secret;

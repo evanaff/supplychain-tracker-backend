@@ -9,37 +9,18 @@ import { isAddress } from "ethers";
 import { contract } from "../lib/contract";
 
 class ActorService {
-    async registerActorToDatabase(payload: CreateActorDTO) {
-        if (!isAddress(payload.blockchainAddress)) {
-            throw new InvariantError("Invalid blockchain address")
-        }
-
-        const lowerCaseBlockchainAddress = payload.blockchainAddress.toLowerCase();
-
-        const exist = await db.query.actors.findFirst({
-            where: eq(schema.actors.blockchainAddress, lowerCaseBlockchainAddress)
-        });
-        if (exist) {
-            throw new InvariantError("Blockchain address is already registered");
-        }
-        
-        const locationRecord = await db.query.locations.findFirst({
-            where: eq(schema.locations.gln, payload.locationGln)
-        });
-        if (!locationRecord) {
-            throw new NotFoundError("Location not found");
-        }
-
-        if (locationRecord.allowedRole !== payload.role) {
-            throw new InvariantError("Invalid role for this location");
-        }
-
+    async registerActorToDatabase(
+        payload: CreateActorDTO,
+        txHash: string
+    ) {
         const result = await db.insert(schema.actors).values({
-            blockchainAddress: lowerCaseBlockchainAddress,
+            blockchainAddress: payload.blockchainAddress.toLowerCase(),
             locationGln: payload.locationGln,
             name: payload.name,
-            role: payload.role
+            role: payload.role,
+            txHash
         }).returning();
+
         if (!result) {
             throw new InvariantError("Failed to add actor");
         }
@@ -48,29 +29,18 @@ class ActorService {
     }
 
     async registerActorToBlockchain(blockchainAddress: string) {
-        const lowerCaseBlockchainAddress = blockchainAddress.toLowerCase();
+        const tx = await contract.addActor(blockchainAddress);
 
-        const actorRecord = await db.query.actors.findFirst({
-            where: eq(schema.actors.blockchainAddress, lowerCaseBlockchainAddress)
-        });
-        if (!actorRecord) {
-            throw new NotFoundError("Actor not found")
+        const receipt = await tx.wait();
+
+        if (!receipt || receipt.status !== 1) {
+            throw new Error("Blockchain transaction was not confirmed successfully");
         }
 
-        let tx
-        try {
-            tx = await contract.addActor(blockchainAddress);
-            await tx.wait();
-        } catch (error: any) {
-            await db.delete(schema.actors).where(eq(schema.actors.blockchainAddress, actorRecord.blockchainAddress));
-            throw new Error(`Blockchain transaction failed: ${error.reason}`);
-        }
-
-        await db.update(schema.actors).set({
-            txHash: tx.hash
-        }).where(eq(schema.actors.blockchainAddress, lowerCaseBlockchainAddress));
-
-        return tx.hash;
+        return {
+            txHash: tx.hash,
+            blockNumber: receipt.blockNumber
+        };
     }
 
     async listActors(query: ListActorsQueryDTO) {
@@ -137,6 +107,34 @@ class ActorService {
         }
 
         return actorRecord;
+    }
+
+    async validateActorRegistrationPayload(payload: CreateActorDTO) {
+        if (!isAddress(payload.blockchainAddress)) {
+            throw new InvariantError("Invalid blockchain address");
+        }
+
+        const lowerCaseBlockchainAddress = payload.blockchainAddress.toLowerCase();
+
+        const exist = await db.query.actors.findFirst({
+            where: eq(schema.actors.blockchainAddress, lowerCaseBlockchainAddress)
+        });
+
+        if (exist) {
+            throw new InvariantError("Blockchain address is already registered");
+        }
+
+        const locationRecord = await db.query.locations.findFirst({
+            where: eq(schema.locations.gln,payload.locationGln)
+        });
+
+        if (!locationRecord) {
+            throw new NotFoundError("Location not found");
+        }
+
+        if (locationRecord.allowedRole !== payload.role) {
+            throw new InvariantError("Invalid role for this location");
+        }
     }
 
     async countGrower() {

@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "hardhat --tsconfig test/tsconfig.json test",
+    "test:typecheck": "tsc --project test/tsconfig.json --noEmit",
     "dev": "nodemon",
     "db-push": "npx drizzle-kit push",
     "db-generate": "npx drizzle-kit generate",

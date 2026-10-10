@@ -52,7 +52,7 @@ export const postVerifySignatureHandler = async (req: Request, res: Response, ne
                 accessToken,
                 refreshToken,
                 actor
-            }
+            },
         });
     } catch (error) {
         next(error)

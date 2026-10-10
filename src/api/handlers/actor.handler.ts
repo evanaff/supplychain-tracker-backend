@@ -14,15 +14,15 @@ export const postRegisterActorHandler = async (req: Request, res: Response, next
         ActorValidator.validateCreateActorPayload(payload);
 
         // Add Actor
-        const actor = await actorService.registerActorToDatabase(payload);
-        const txHash = await actorService.registerActorToBlockchain(payload.blockchainAddress);
+        await actorService.validateActorRegistrationPayload(payload);
+        const blockchainRegistrationResult = await actorService.registerActorToBlockchain(payload.blockchainAddress);
+        const actor = await actorService.registerActorToDatabase(payload, blockchainRegistrationResult.txHash);
 
         res.status(201).json({
             status: "success",
             message: "Actor registered successfully",
             data: {
-                actor,
-                txHash
+                actor
             }
         });
     } catch (error) {

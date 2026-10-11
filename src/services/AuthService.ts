@@ -77,11 +77,11 @@ class AuthService {
         );
 
         const refreshToken = crypto.randomBytes(64).toString("hex");
-        const refreshTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); 
+        const refreshTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
         await db.insert(schema.refreshTokens).values({
             address: record.blockchainAddress,
-            token: refreshToken,
+            tokenHash: this.hashToken(refreshToken),
             expiresAt: refreshTokenExpiresAt
         });
 
@@ -116,16 +116,18 @@ class AuthService {
         return record.nonce;
     }
 
-    async refreshSession(refreshToken: string) {   
+    async refreshSession(refreshToken: string) {
+        const hashedRefreshToken = this.hashToken(refreshToken);
+
         const refreshTokenRecord = await db.query.refreshTokens.findFirst({
-            where: eq(schema.refreshTokens.token, refreshToken)
+            where: eq(schema.refreshTokens.tokenHash, hashedRefreshToken)
         });
-        if (!refreshTokenRecord || refreshTokenRecord.token !== refreshToken) {
+        if (!refreshTokenRecord) {
             throw new AuthenticationError("Invalid refresh token");
         }
 
         if (refreshTokenRecord.expiresAt < new Date()) {
-            await db.delete(schema.refreshTokens).where(eq(schema.refreshTokens.token, refreshToken));
+            await db.delete(schema.refreshTokens).where(eq(schema.refreshTokens.tokenHash, hashedRefreshToken));
 
             throw new AuthenticationError("Refresh token expired");
         }
@@ -154,14 +156,14 @@ class AuthService {
             }
         );
 
-        await db.delete(schema.refreshTokens).where(eq(schema.refreshTokens.token, refreshToken));
+        await db.delete(schema.refreshTokens).where(eq(schema.refreshTokens.tokenHash, hashedRefreshToken));
         
         const newRefreshToken = crypto.randomBytes(64).toString("hex");
         const newRefreshTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); 
 
         await db.insert(schema.refreshTokens).values({
             address: actorRecord.blockchainAddress,
-            token: newRefreshToken,
+            tokenHash: this.hashToken(newRefreshToken),
             expiresAt: newRefreshTokenExpiresAt
         });
 
@@ -177,7 +179,12 @@ class AuthService {
     }
 
     async deleteRefreshToken(refreshToken: string){
-        await db.delete(schema.refreshTokens).where(eq(schema.refreshTokens.token, refreshToken));
+        const hashedRefreshToken = this.hashToken(refreshToken)
+        await db.delete(schema.refreshTokens).where(eq(schema.refreshTokens.tokenHash, hashedRefreshToken));
+    }
+
+    hashToken(token: string) {
+        return crypto.createHash("sha256").update(token, "utf8").digest("hex");
     }
 }
 

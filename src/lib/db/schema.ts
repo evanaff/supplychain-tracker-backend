@@ -70,38 +70,40 @@ export type ProductLotsnapshot = {
 export const locations = pgTable(
     "locations",
     {
-        gln: varchar("gln", { length: 13 }).primaryKey(),
+        gln: varchar("gln", { length: 13 })
+            .primaryKey(),
 
-        name: varchar("name", { length: 255 }).notNull(),
+        name: varchar("name", { length: 255 })
+            .notNull(),
 
-        province: varchar("province", { length: 100 }).notNull(),
+        province: varchar("province", { length: 100 })
+            .notNull(),
 
-        city: varchar("city", { length: 100 }).notNull(),
+        city: varchar("city", { length: 100 })
+            .notNull(),
 
-        address: text("address").notNull(),
+        address: text("address")
+            .notNull(),
 
-        allowedRole: roleEnum("allowed_role").notNull(),
+        allowedRole: roleEnum("allowed_role")
+            .notNull(),
     }
 );
 
 export const actors = pgTable(
     "actors",
     {
-        blockchainAddress: varchar("blockchain_address", {
-            length: 42,
-        }).primaryKey(),
+        blockchainAddress: varchar("blockchain_address", { length: 42 })
+            .primaryKey(),
 
-        locationGln: varchar("location_gln", {
-            length: 13,
-        })
-            .notNull()
-            .references(() => locations.gln),
+        locationGln: varchar("location_gln", { length: 13 })
+            .notNull().references(() => locations.gln),
 
-        name: varchar("name", {
-            length: 255,
-        }).notNull(),
+        name: varchar("name", { length: 255 })
+            .notNull(),
 
-        role: roleEnum("role").notNull(),
+        role: roleEnum("role")
+            .notNull(),
 
         txHash: text("tx_hash"),
     },
@@ -114,102 +116,66 @@ export const actors = pgTable(
 export const products = pgTable(
     "products",
     {
-        gtin: varchar("gtin", {
-            length: 13,
-        }).primaryKey(),
+        gtin: varchar("gtin", { length: 13 })
+            .primaryKey(),
 
-        varietyName: varchar("variety_name", {
-            length: 255,
-        }).notNull(),
+        varietyName: varchar("variety_name", { length: 255 })
+            .notNull(),
 
-        unitOfMeasure: varchar("unit_of_measure", {
-            length: 20,
-        }).notNull(),
+        unitOfMeasure: varchar("unit_of_measure", { length: 20 })
+            .notNull(),
 
-        imageUrl: text("image_url").notNull(),
+        imageUrl: text("image_url")
+            .notNull(),
     }
 );
 
 export const productLots = pgTable(
     "product_lots",
     {
-        id: varchar("id", {
-            length: 15,
-        }).primaryKey(),
+        id: varchar("id", { length: 15 })
+            .primaryKey(),
 
-        gtin: varchar("gtin", {
-            length: 13,
-        })
-            .notNull()
-            .references(() => products.gtin),
+        gtin: varchar("gtin", { length: 13 })
+            .notNull().references(() => products.gtin),
 
-        creatorBlockchainAddress: varchar(
-            "creator_blockchain_address",
-            {
-                length: 42,
-            }
-        )
-            .notNull()
-            .references(() => actors.blockchainAddress),
+        creatorBlockchainAddress: varchar("creator_blockchain_address", { length: 42 })
+            .notNull().references(() => actors.blockchainAddress),
 
-        currentOwnerBlockchainAddress: varchar(
-            "current_owner_blockchain_address",
-            {
-                length: 42,
-            }
-        )
-            .notNull()
-            .references(() => actors.blockchainAddress),
+        currentOwnerBlockchainAddress: varchar("current_owner_blockchain_address", { length: 42 })
+            .notNull().references(() => actors.blockchainAddress),
 
-        lotNumber: varchar("lot_number", {
-            length: 100,
-        }).notNull(),
-
-        quantity: integer("quantity").notNull(),
-
-        currentActivity: supplyChainActivityEnum(
-            "current_activity"
-        )
-            .notNull()
-            .default("CREATED"),
-
-        createdAt: timestamp("created_at", {
-            withTimezone: true,
-        })
-            .defaultNow()
+        lotNumber: varchar("lot_number", { length: 100 })
             .notNull(),
+
+        quantity: integer("quantity")
+            .notNull(),
+
+        currentActivity: supplyChainActivityEnum("current_activity")
+            .notNull().default("CREATED"),
+
+        createdAt: timestamp("created_at", { withTimezone: true })
+            .defaultNow().notNull(),
     },
     (table) => ({
         gtinIdx: index("idx_product_lot_gtin").on(table.gtin),
 
-        ownerIdx: index(
-            "idx_product_lot_owner"
-        ).on(table.currentOwnerBlockchainAddress),
+        ownerIdx: index("idx_product_lot_owner").on(table.currentOwnerBlockchainAddress),
         
-        currentActivityIdx: index(
-            "idx_product_lot_activity"
-        ).on(table.currentActivity),
+        currentActivityIdx: index("idx_product_lot_activity").on(table.currentActivity),
 
-        uniqueLot: uniqueIndex(
-            "unique_gtin_lot"
-        ).on(table.gtin, table.lotNumber),
+        uniqueLot: uniqueIndex("unique_gtin_lot").on(table.gtin, table.lotNumber),
     })
 );
 
 export const productEvents = pgTable(
     "product_events",
     {
-        id: varchar("id", {
-            length: 15,
-        }).primaryKey(),
+        id: varchar("id", { length: 15 })
+        .primaryKey(),
 
-        productLotId: varchar("product_lot_id", {
-            length: 50,
-        })
-            .notNull()
-            .references(() => productLots.id, {
-                onDelete: "cascade",
-            }),
+        productLotId: varchar("product_lot_id", { length: 50 })
+            .notNull().references(() => productLots.id, { onDelete: "cascade" }),
 
         productLotsJson: jsonb("product_lot_json")
             .$type<ProductLotsnapshot>()
@@ -227,35 +193,23 @@ export const productEvents = pgTable(
             .$type<LocationSnapshot>()
             .notNull(),
 
-        destinationLocationJson: jsonb(
-            "destination_location_json"
-        )
+        destinationLocationJson: jsonb("destination_location_json")
             .$type<LocationSnapshot | null>(),
 
-        supplyChainActivity: supplyChainActivityEnum(
-            "supply_chain_activity"
-        ).notNull(),
-
-        timestamp: timestamp("timestamp", {
-            withTimezone: true,
-        })
-            .defaultNow()
+        supplyChainActivity: supplyChainActivityEnum("supply_chain_activity")
             .notNull(),
+
+        timestamp: timestamp("timestamp", { withTimezone: true })
+            .defaultNow().notNull(),
 
         txHash: text("tx_hash"),
     },
     (table) => ({
-        productLotIdx: index(
-            "idx_product_event_product_lot"
-        ).on(table.productLotId),
+        productLotIdx: index("idx_product_event_product_lot").on(table.productLotId),
 
-        activityIdx: index(
-            "idx_product_event_activity"
-        ).on(table.supplyChainActivity),
+        activityIdx: index("idx_product_event_activity").on(table.supplyChainActivity),
 
-        timestampIdx: index(
-            "idx_product_event_timestamp"
-        ).on(table.timestamp),
+        timestampIdx: index("idx_product_event_timestamp").on(table.timestamp),
     })
 );
 
@@ -266,44 +220,36 @@ export const productEvents = pgTable(
 export const nonces = pgTable(
     "nonces",
     {
-        address: varchar("address", {
-            length: 42,
-        }).notNull(),
+        address: varchar("address", { length: 42 })
+            .notNull(),
 
-        nonce: varchar("nonce", {
-            length: 100,
-        }).notNull(),
+        nonce: varchar("nonce", { length: 100 })
+            .notNull(),
 
-        expiresAt: timestamp("expires_at").notNull(),
+        expiresAt: timestamp("expires_at")
+            .notNull(),
     },
     (table) => ({
-        addressIdx: index(
-            "idx_nonce_address"
-        ).on(table.address),
+        addressIdx: index("idx_nonce_address").on(table.address),
 
-        uniqueAddressNonce: uniqueIndex(
-            "unique_nonce_address"
-        ).on(table.address),
+        uniqueAddressNonce: uniqueIndex("unique_nonce_address").on(table.address),
     })
 );
 
 export const refreshTokens = pgTable(
     "refresh_tokens",
     {
-        address: varchar("address", {
-            length: 42,
-        }).notNull(),
+        address: varchar("address", { length: 42 })
+            .notNull(),
 
-        token: text("token")
-            .notNull()
-            .unique(),
+        tokenHash: text("token_hash")
+            .notNull().unique(),
+        
         expiresAt: timestamp("expires_at")
             .notNull(),
     },
     (table) => ({
-        addressIdx: index(
-            "idx_refresh_token_address"
-        ).on(table.address),
+        addressIdx: index("idx_refresh_token_address").on(table.address),
     })
 );
 

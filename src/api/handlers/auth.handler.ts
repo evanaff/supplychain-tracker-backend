@@ -5,8 +5,10 @@ import AuthValidator from "../../validator/auth";
 import { SiweMessage } from "siwe";
 import config from "../../common/config";
 import InvariantError from "../../common/exceptions/InvariantError";
+import ActorService from "../../services/ActorService";
 
 const authService = new AuthService();
+const actorService = new ActorService();
 
 export const postGenerateMessageHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -71,6 +73,29 @@ export const postVerifySignatureHandler = async (req: Request, res: Response, ne
         });
     } catch (error) {
         next(error)
+    }
+}
+
+export const getCurrentActorHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Get User Address
+        const user = req.user;
+        if (!user) {
+            throw new InvariantError("User not found");
+        }
+        const userAddress = user.address;
+
+        // Get Actor
+        const { actor } = await actorService.getActorByAddress(userAddress);
+
+        res.json({
+            status: "success",
+            data: {
+                actor
+            }
+        });
+    } catch (error) {
+        next(error);
     }
 }
 

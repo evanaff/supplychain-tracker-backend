@@ -9,6 +9,25 @@ import { isAddress } from "ethers";
 import { contract } from "../lib/contract";
 
 class ActorService {
+    async getActorByAddress(address: string) {
+        const lowerCaseAddress = address.toLowerCase();
+        const record = await db.query.actors.findFirst({
+            where: eq(schema.actors.blockchainAddress, lowerCaseAddress)
+        });
+
+        if (!record) {
+            throw new NotFoundError("Actor record not found");
+        }
+
+        return {
+            actor: {
+                address: record.blockchainAddress, 
+                name: record.name, 
+                role: record.role 
+            }
+        }
+    }
+
     async registerActorToDatabase(
         payload: CreateActorDTO,
         txHash: string

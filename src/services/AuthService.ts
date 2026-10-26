@@ -47,7 +47,8 @@ class AuthService {
                 domain: config.app.domainName
             });
         } catch (error) {
-            throw new InvariantError(`Failed to verify message: ${error}`);
+            console.error(error);
+            throw new InvariantError(`Failed to verify message`);
         }
 
         await db.delete(schema.nonces).where(eq(schema.nonces.address, siweAddress));

@@ -65,6 +65,18 @@ describe("SupplyChainTracker", function () {
             expect(await tracker.actors(actor.address)).to.equal(false);
         });
 
+        it("Reject zero address when registering a new actor", async function () {
+            const { tracker } = await loadFixture(deployFixture);
+
+            const zeroAddress = ethers.ZeroAddress;
+
+            await expect(
+                tracker.addActor(zeroAddress),
+            ).to.be.revertedWith("Invalid actor address");
+
+            expect(await tracker.actors(zeroAddress)).to.equal(false);
+        });
+
         it("Reject duplication of registered actor", async function () {
             const { tracker, actor } = await loadFixture(registeredActorFixture);
 
@@ -120,6 +132,57 @@ describe("SupplyChainTracker", function () {
             await expect(
                 tracker.connect(outsider).addProductEvent(PRODUCT_EVENT_ID, PRODUCT_LOT_ID, DATA_HASH),
             ).to.be.revertedWith("Unauthorized actor access");
+
+            const event = await tracker.productEvents(PRODUCT_EVENT_ID);
+
+            expect(event.productEventId).to.equal("");
+            expect(event.dataHash).to.equal(ethers.ZeroHash);
+
+            expect(
+                await tracker.getProductEventIdsByProductLotId(PRODUCT_LOT_ID),
+            ).to.deep.equal([]);
+        });
+
+        it("Reject empty product event ID", async function () {
+            const { tracker, actor } = await loadFixture(registeredActorFixture);
+
+            await expect(
+                tracker.connect(actor).addProductEvent("", PRODUCT_LOT_ID, DATA_HASH),
+            ).to.be.revertedWith("Product event ID cannot be empty");
+
+            const event = await tracker.productEvents("");
+
+            expect(event.productEventId).to.equal("");
+            expect(event.dataHash).to.equal(ethers.ZeroHash);
+
+            expect(
+                await tracker.getProductEventIdsByProductLotId(PRODUCT_LOT_ID),
+            ).to.deep.equal([]);
+        });
+
+        it("Reject empty product lot ID", async function () {
+            const { tracker, actor } = await loadFixture(registeredActorFixture);
+
+            await expect(
+                tracker.connect(actor).addProductEvent(PRODUCT_EVENT_ID, "", DATA_HASH),
+            ).to.be.revertedWith("Product lot ID cannot be empty");
+
+            const event = await tracker.productEvents(PRODUCT_EVENT_ID);
+
+            expect(event.productEventId).to.equal("");
+            expect(event.dataHash).to.equal(ethers.ZeroHash);
+
+            expect(
+                await tracker.getProductEventIdsByProductLotId(""),
+            ).to.deep.equal([]);
+        });
+
+        it("Reject zero data hash", async function () {
+            const { tracker, actor } = await loadFixture(registeredActorFixture);
+
+            await expect(
+                tracker.connect(actor).addProductEvent(PRODUCT_EVENT_ID, PRODUCT_LOT_ID, ethers.ZeroHash),
+            ).to.be.revertedWith("Data hash cannot be empty");
 
             const event = await tracker.productEvents(PRODUCT_EVENT_ID);
 

@@ -20,6 +20,7 @@ contract AccessControl {
     }
 
     function addActor(address _actor) public onlyAdmin {
+        require(_actor != address(0), "Invalid actor address");
         require(!actors[_actor], "actor is already registered");
 
         actors[_actor] = true;

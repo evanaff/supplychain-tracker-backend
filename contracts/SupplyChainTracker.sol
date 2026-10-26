@@ -18,6 +18,15 @@ contract SupplyChainTracker is AccessControl {
         bytes32 _dataHash
     ) public onlyActor {
         require(
+            bytes(_productEventId).length > 0,
+            "Product event ID cannot be empty"
+        );
+        require(
+            bytes(_productLotId).length > 0,
+            "Product lot ID cannot be empty"
+        );
+        require(_dataHash != bytes32(0), "Data hash cannot be empty");
+        require(
             bytes(productEvents[_productEventId].productEventId).length == 0,
             "Product event already exists"
         );

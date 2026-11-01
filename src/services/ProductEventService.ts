@@ -212,7 +212,7 @@ class ProductEventService {
     }
 
     async getProductEventByIdFromDatabase(id: string) {
-        const ProductEventRecord = await db.query.productEvents.findFirst({
+        const productEventRecord = await db.query.productEvents.findFirst({
             where: eq(schema.productEvents.id, id),
             with: {
                 productLot: {
@@ -223,17 +223,42 @@ class ProductEventService {
             }
         });
 
-        if (!ProductEventRecord) {
+        if (!productEventRecord) {
             throw new NotFoundError("Product event not found");
         }
 
-        return ProductEventRecord
+        return productEventRecord
     }
 
-    async generateDataHash(productEventId: string, blockchainAddress: string) {
-        const productEventRecord = await db.query.productEvents.findFirst({
-            where: eq(schema.productEvents.id, productEventId)
-        });
+    async generateDataHash(productEventId: string) {
+        const productEventRecord = await this.getProductEventByIdFromDatabase(productEventId);
+        if (!productEventRecord) {
+            throw new NotFoundError("Product event not found");
+        }
+
+        const timestamp = typeof productEventRecord.timestamp === "string"
+            ? productEventRecord.timestamp
+            : productEventRecord.timestamp.toISOString();
+
+        const jsonPayload = {
+            productLotId: productEventRecord.productLotId,
+            productLot: productEventRecord.productLotsJson,
+            product: productEventRecord.productJson,
+            actor: productEventRecord.actorJson,
+            sourceLocation: productEventRecord.sourceLocationJson,
+            destinationLocation: productEventRecord.destinationLocationJson,
+            supplyChainActivity: productEventRecord.supplyChainActivity,
+            timestamp,
+        };
+        const stringPayload = JSON.stringify(jsonPayload); 
+        
+        const dataHash = keccak256(toUtf8Bytes(stringPayload));
+
+        return dataHash
+    }
+
+    async getDataHashByBlockchainAddress(productEventId: string, blockchainAddress: string) {
+        const productEventRecord = await this.getProductEventByIdFromDatabase(productEventId);
         if (!productEventRecord) {
             throw new NotFoundError("Product event not found");
         }
@@ -241,7 +266,7 @@ class ProductEventService {
         const lowerCaseBlockchainAddress = blockchainAddress.toLowerCase();
         if (productEventRecord.actorJson.blockchainAddress !== lowerCaseBlockchainAddress) {
             throw new InvariantError("User is not the actor of product event")
-        } 
+        }
 
         const timestamp = typeof productEventRecord.timestamp === "string"
             ? productEventRecord.timestamp

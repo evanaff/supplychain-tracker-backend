@@ -47,7 +47,7 @@ export const getEventHashHandler = async (req: Request, res: Response, next: Nex
         const productEventId = req.params.id as string;
 
         // Generate Message Hash
-        const dataHash = await productEventService.generateDataHash(productEventId, userAddress);
+        const dataHash = await productEventService.getDataHashByBlockchainAddress(productEventId, userAddress);
 
         res.json({
             status: "success",

@@ -130,6 +130,13 @@ class ProductEventService {
             throw new NotFoundError("Actor not found");
         }
 
+        let destinationLocationRecord;
+        if (payload.destinationLocationGln) {
+            destinationLocationRecord = await db.query.locations.findFirst({
+                where: eq(schema.locations.gln, payload.destinationLocationGln)
+            });
+        }
+
         const lastProductEvent = await this.getLastProductEvent(payload.productLotId);
 
         switch (payload.supplyChainActivity) {
@@ -139,6 +146,9 @@ class ProductEventService {
                 }
                 if (actorRecord.role !== "GROWER") {
                     throw new InvariantError("Invalid actor role");
+                }
+                if (actorRecord.locationGln !== currentOwner.locationGln) {
+                    throw new InvariantError("Invalid actor location")
                 }
                 break;
         
@@ -157,6 +167,12 @@ class ProductEventService {
                 }
                 if (actorRecord.locationGln === payload.destinationLocationGln) {
                     throw new InvariantError("Source location and destination location must be different")
+                }
+                if (actorRecord.role === "GROWER" && destinationLocationRecord?.allowedRole !== "DISTRIBUTOR") {
+                    throw new InvariantError("Invalid destination location")
+                }
+                if (actorRecord.role === "DISTRIBUTOR" && destinationLocationRecord?.allowedRole !== "RETAILER") {
+                    throw new InvariantError("Invalid destination location")
                 }
                 if (actorRecord.role === "RETAILER") {
                     throw new InvariantError("Invalid actor role");
@@ -185,6 +201,9 @@ class ProductEventService {
                 if (actorRecord.role !== "RETAILER") {
                     throw new InvariantError("Invalid actor role");
                 }
+                if (actorRecord.locationGln !== currentOwner.locationGln) {
+                    throw new InvariantError("Invalid actor location")
+                }
                 break;
         
             default:
@@ -211,26 +230,31 @@ class ProductEventService {
         return ProductEventRecord
     }
 
-    async generateDataHash(ProductEventId: string) {
-        const ProductEvent = await db.query.productEvents.findFirst({
-            where: eq(schema.productEvents.id, ProductEventId)
+    async generateDataHash(productEventId: string, blockchainAddress: string) {
+        const productEventRecord = await db.query.productEvents.findFirst({
+            where: eq(schema.productEvents.id, productEventId)
         });
-        if (!ProductEvent) {
+        if (!productEventRecord) {
             throw new NotFoundError("Product event not found");
         }
 
-        const timestamp = typeof ProductEvent.timestamp === "string"
-            ? ProductEvent.timestamp
-            : ProductEvent.timestamp.toISOString();
+        const lowerCaseBlockchainAddress = blockchainAddress.toLowerCase();
+        if (productEventRecord.actorJson.blockchainAddress !== lowerCaseBlockchainAddress) {
+            throw new InvariantError("User is not the actor of product event")
+        } 
+
+        const timestamp = typeof productEventRecord.timestamp === "string"
+            ? productEventRecord.timestamp
+            : productEventRecord.timestamp.toISOString();
 
         const jsonPayload = {
-            productLotId: ProductEvent.productLotId,
-            productLot: ProductEvent.productLotsJson,
-            product: ProductEvent.productJson,
-            actor: ProductEvent.actorJson,
-            sourceLocation: ProductEvent.sourceLocationJson,
-            destinationLocation: ProductEvent.destinationLocationJson,
-            supplyChainActivity: ProductEvent.supplyChainActivity,
+            productLotId: productEventRecord.productLotId,
+            productLot: productEventRecord.productLotsJson,
+            product: productEventRecord.productJson,
+            actor: productEventRecord.actorJson,
+            sourceLocation: productEventRecord.sourceLocationJson,
+            destinationLocation: productEventRecord.destinationLocationJson,
+            supplyChainActivity: productEventRecord.supplyChainActivity,
             timestamp,
         };
         const stringPayload = JSON.stringify(jsonPayload); 

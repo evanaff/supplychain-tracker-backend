@@ -36,11 +36,18 @@ export const postCreateProductEventHandler = async (req: Request, res: Response,
 
 export const getEventHashHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
+        // Get User Address
+        const user = req.user;
+        if (!user) {
+            throw new AuthorizationError("Unauthorized access");
+        }
+        const userAddress = user.address;
+
         // Get Params
         const productEventId = req.params.id as string;
 
         // Generate Message Hash
-        const dataHash = await productEventService.generateDataHash(productEventId);
+        const dataHash = await productEventService.generateDataHash(productEventId, userAddress);
 
         res.json({
             status: "success",
